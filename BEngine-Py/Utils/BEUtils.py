@@ -18,7 +18,29 @@ BENGINE_INSTANCE = "be_instance"
 BENGINE_MATERIAL = "be_material"
 BENGINE_COLOR = "be_color"
 
+TYPE_GN = "GeometryNodeTree"
+TYPE_SV = "SverchCustomTreeType"
+TYPE_SV_SCRIPT = "SvScriptNodeLite"
+
 OUTPUT_JSON_NAME = "BlenderOutputs.json"
+
+
+class SVConstants:
+    SV_INPUT_BOOL = "BEBoolean.py"
+    SV_INPUT_COLL = "BECollection.py"
+    SV_INPUT_COLOR = "BEColor.py"
+    SV_INPUT_FLOAT = "BEFloat.py"
+    SV_INPUT_INT = "BEInteger.py"
+    SV_INPUT_OBJ = "BEObject.py"
+    SV_INPUT_STR = "BEString.py"
+    SV_INPUT_VEC = "BEVector.py"
+
+    SV_Inputs = (SV_INPUT_BOOL, SV_INPUT_COLL, SV_INPUT_COLOR, 
+                    SV_INPUT_FLOAT, SV_INPUT_INT, SV_INPUT_OBJ,
+                    SV_INPUT_STR, SV_INPUT_VEC)
+
+    SV_OUTPUT_OBJ = "BEObjectsOutput.py"
+
 
 class BEPaths:
 
@@ -94,17 +116,12 @@ def ClearScene():
         mats.remove(mat, do_unlink=True)
 
 
-def GetGNInputsData(node_group):
-    gn_inputs_data = []
-
-    for i, input in enumerate(node_group.inputs.items()):
-        input_data = {}
-        input_data['Type'] = input[1].type
-        input_data['Name'] = input[1].name
-        input_data['Identifier'] = input[1].identifier
-
-        match input_data['Type']:
-            case 'VALUE':
+# Set GN/SV Default/Min/Max Values
+# input is either GNNodeInputs or SVNode
+def SetBaseInputValues(input_data, input, is_GN: bool):
+    match input_data['Type']:
+        case 'VALUE':
+            if is_GN:
                 input_data['DefaultValue'] = input[1].default_value
                 # input_data['DefaultValue'] = numpy.float32(input[1].default_value)
 
@@ -112,78 +129,178 @@ def GetGNInputsData(node_group):
                 input_data['MaxValue'] = input[1].max_value
 
                 # input_data['Value'] = geom_mod[input[1].identifier]
+            else:
+                input_data['DefaultValue'] = input['BEFloatDefault']
+                input_data['MinValue'] = input['BEFloatMin']
+                input_data['MaxValue'] = input['BEFloatMax']
 
-            case 'INT':
+        case 'INT':
+            if is_GN:
                 input_data['DefaultValue'] = input[1].default_value
-
                 input_data['MinValue'] = input[1].min_value
                 input_data['MaxValue'] = input[1].max_value
+            else:
+                input_data['DefaultValue'] = input['BEIntegerDefault']
+                input_data['MinValue'] = input['BEIntegerMin']
+                input_data['MaxValue'] = input['BEIntegerMax']
 
-            case _:
-                if input_data['Type'] in {'STRING', 'BOOLEAN'}:
-                    input_data['DefaultValue'] = input[1].default_value
-                    # input_data['Value'] = geom_mod[input[1].identifier]
+        case 'BOOLEAN':
+            if is_GN:
+                input_data['DefaultValue'] = input[1].default_value
+            else:
+                input_data['DefaultValue'] = input['BEBooleanDefault']
 
-                elif input_data['Type'] in ('RGBA', 'VECTOR'):
-                    input_data['DefaultValue'] = list(input[1].default_value)
+        case 'STRING':
+            if is_GN:
+                input_data['DefaultValue'] = input[1].default_value
+            else:
+                input_data['DefaultValue'] = input['BEStringDefault']
+
+        case 'RGBA':
+            if is_GN:
+                input_data['DefaultValue'] = list(input[1].default_value)
+            else:
+                input_data['DefaultValue'] = list(input['BEColorDefault'])
+
+        case 'VECTOR':
+            if is_GN:
+                input_data['DefaultValue'] = list(input[1].default_value)
+                input_data['MinValue'] = input[1].min_value
+                input_data['MaxValue'] = input[1].max_value
+            else:
+                input_data['DefaultValue'] = list(input['BEVectorDefault'])
+                input_data['DefaultValue'] = input['BEVectorMin']
+                input_data['DefaultValue'] = input['BEVectorMax']
+
+
+
+def GetSVInputNodes(node_group):
+    sv_input_nodes = []
+
+    for node in node_group.nodes:
+        if node.bl_idname == TYPE_SV_SCRIPT:
+            for in_out_name in SVConstants.SV_Inputs:
+                if in_out_name in node.script_name:
+                    sv_input_nodes.append([in_out_name, node])
+                    break
+
+    sv_input_nodes.sort(key=lambda x: x[1].location.y)
+    sv_input_nodes.reverse()
+
+    return sv_input_nodes
+
+
+def GetSVInputsData(node_group):   # ADD IMAGE AND MATERIAL!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    sv_inputs_data = []
+
+    sv_input_nodes = GetSVInputNodes(node_group)
+
+    for sv_node_stuff in sv_input_nodes:
+        sv_node_name = sv_node_stuff[0]
+        sv_node = sv_node_stuff[1]
+        input_data = {}
+
+        input_data['Name'] = sv_node['BEInputName']
+        input_data['Identifier'] = sv_node.node_id
+
+        # Set Type
+        match sv_node_name:
+            case SVConstants.SV_INPUT_BOOL:
+                input_data['Type'] = 'BOOLEAN'
+            case SVConstants.SV_INPUT_COLL:
+                input_data['Type'] = 'COLLECTION'
+            case SVConstants.SV_INPUT_COLOR:
+                input_data['Type'] = 'RGBA'
+            case SVConstants.SV_INPUT_FLOAT:
+                input_data['Type'] = 'VALUE'
+            case SVConstants.SV_INPUT_INT:
+                input_data['Type'] = 'INT'
+            case SVConstants.SV_INPUT_OBJ:
+                input_data['Type'] = 'OBJECT'
+            case SVConstants.SV_INPUT_STR:
+                input_data['Type'] = 'STRING'
+            case SVConstants.SV_INPUT_VEC:
+                input_data['Type'] = 'VECTOR'
+
+        # Set Default/Min/Max Values
+        SetBaseInputValues(input_data, sv_node, False)
+
+        sv_inputs_data.append(input_data)
+
+    return sv_inputs_data
+
+
+def GetGNInputsData(node_group):
+    gn_inputs_data = []
+
+    for input in node_group.inputs.items():
+        input_data = {}
+        input_data['Type'] = input[1].type
+        input_data['Name'] = input[1].name
+        input_data['Identifier'] = input[1].identifier
+
+        # Set Default/Min/Max Values
+        SetBaseInputValues(input_data, input, True)
 
         gn_inputs_data.append(input_data)
 
     return gn_inputs_data
 
 
-def LoadGN(context, be_paths: BEPaths):
+def LoadNodesTreeFromJSON(context, be_paths: BEPaths):
 
     bpy.ops.wm.link(filepath=be_paths.filepath, filename=be_paths.filename, directory=be_paths.directory)
 
     if (bpy.data.node_groups):
-        bengine_GN = bpy.data.node_groups[be_paths.node_sys_name]
+        node_tree = bpy.data.node_groups[be_paths.node_sys_name]
 
-        # Create New Object
-        process_mesh = bpy.data.meshes.new('emptyMesh')
-        process_obj = bpy.data.objects.new("BEngineProcess", process_mesh)
+        process_gn_obj = None
+        geom_mod = None
 
-        context.collection.objects.link(process_obj)
+        # If GN NodeTree
+        if node_tree.bl_idname == TYPE_GN:
+            # Create New Object
+            process_mesh = bpy.data.meshes.new('emptyMesh')
+            process_gn_obj = bpy.data.objects.new("BEngineProcess", process_mesh)
 
-        process_obj.select_set(True)
-        context.view_layer.objects.active = process_obj
+            context.collection.objects.link(process_gn_obj)
 
-        # Add GN Modifier
-        geom_mod = process_obj.modifiers.new("BEngine", type='NODES')
-        # geom_mod.show_viewport = False  # Modifier is switched off during loading
-        geom_mod.node_group = bengine_GN
+            process_gn_obj.select_set(True)
+            context.view_layer.objects.active = process_gn_obj
 
-        return process_obj, geom_mod, bengine_GN
+            # Add GN Modifier
+            geom_mod = process_gn_obj.modifiers.new("BEngine", type='NODES')
+            # geom_mod.show_viewport = False  # Modifier is switched off during loading
+            geom_mod.node_group = node_tree
+
+        return process_gn_obj, geom_mod, node_tree
     
     return None, None, None
 
 
-def SetupInputsFromJSON(context, bengine_GN, geom_mod, js_input_data,
+def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                         be_paths: BEPaths, engine_type: str):
 
     coll_idx = 0
 
-    for input in bengine_GN.inputs.items():
-        input_data = {}
-        input_data['Type'] = input[1].type
-        input_data['Name'] = input[1].name
-        input_data['Identifier'] = input[1].identifier
+    for input in node_tree.inputs.items():
+        node_id = input[1].identifier
 
-        if input[1].identifier in js_input_data.keys() and input[1].type == js_input_data[input[1].identifier]["Type"]:
+        if node_id in js_input_data.keys() and input[1].type == js_input_data[node_id]["Type"]:
             
-            prop = js_input_data[input[1].identifier]
+            js_prop = js_input_data[node_id]
 
-            if "Value" in prop.keys() and prop["Value"] is not None:
+            if "Value" in js_prop.keys() and js_prop["Value"] is not None:
 
-                match prop["Type"]:
+                match js_prop["Type"]:
                     case "RGBA":
-                        prop_value = prop["Value"]
+                        prop_value = js_prop["Value"]
 
                     case "VECTOR":
-                        prop_value = prop["Value"]
+                        prop_value = js_prop["Value"]
 
                     case "IMAGE":
-                        new_img = bpy.data.images.load(be_paths.project_path_2 + prop["Value"])
+                        new_img = bpy.data.images.load(be_paths.project_path_2 + js_prop["Value"])
                         prop_value = new_img
 
                     # case "TEXTURE":
@@ -194,7 +311,7 @@ def SetupInputsFromJSON(context, bengine_GN, geom_mod, js_input_data,
                         prop_value = mat
 
                     case "OBJECT":
-                        js_obj_val = prop["Value"]
+                        js_obj_val = js_prop["Value"]
 
                         be_objs, has_mesh = ParseObjectFromJSON(context, js_obj_val, engine_type, False, True)
 
@@ -221,7 +338,7 @@ def SetupInputsFromJSON(context, bengine_GN, geom_mod, js_input_data,
                         prop_value = be_obj
 
                     case "COLLECTION":
-                        js_coll_val = prop["Value"]
+                        js_coll_val = js_prop["Value"]
 
                         be_coll = bpy.data.collections.new('BEngine_' + str(coll_idx))
                         context.scene.collection.children.link(be_coll)
@@ -236,25 +353,25 @@ def SetupInputsFromJSON(context, bengine_GN, geom_mod, js_input_data,
                         coll_idx += 1
 
                     case "VALUE":
-                        prop_value = float(prop["Value"])
+                        prop_value = float(js_prop["Value"])
 
                     case default:
-                        prop_value = prop["Value"]
+                        prop_value = js_prop["Value"]
 
                 #  Set Property Value
-                if prop["Type"] == "VECTOR":
-                    geom_mod[input[1].identifier][0] = prop_value[0]
-                    geom_mod[input[1].identifier][1] = prop_value[1]
-                    geom_mod[input[1].identifier][2] = prop_value[2]
+                if js_prop["Type"] == "VECTOR":
+                    GN_mod[input[1].identifier][0] = prop_value[0]
+                    GN_mod[input[1].identifier][1] = prop_value[1]
+                    GN_mod[input[1].identifier][2] = prop_value[2]
 
-                elif prop["Type"] == "RGBA":
-                    geom_mod[input[1].identifier][0] = prop_value[0]
-                    geom_mod[input[1].identifier][1] = prop_value[1]
-                    geom_mod[input[1].identifier][2] = prop_value[2]
-                    geom_mod[input[1].identifier][3] = prop_value[3]
+                elif js_prop["Type"] == "RGBA":
+                    GN_mod[input[1].identifier][0] = prop_value[0]
+                    GN_mod[input[1].identifier][1] = prop_value[1]
+                    GN_mod[input[1].identifier][2] = prop_value[2]
+                    GN_mod[input[1].identifier][3] = prop_value[3]
 
                 else:
-                    geom_mod[input[1].identifier] = prop_value
+                    GN_mod[input[1].identifier] = prop_value
 
 
 def ParseObjectFromJSON(context, js_obj_val, engine_type: str, isCollection: bool, convert_to_meshes=False):

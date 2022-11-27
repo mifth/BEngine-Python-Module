@@ -37,14 +37,18 @@ try:
 
         be_paths = BEUtils.BEPaths()
 
-        process_obj, geom_mod, bengine_GN = BEUtils.LoadGN(context, be_paths)
+        process_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_paths)
 
-        if (process_obj and bengine_GN):
+        if node_tree:
 
             # ORIGINAL STUFF
             # Get GN Data
             js_output_data = {}
-            gn_inputs_data = BEUtils.GetGNInputsData(bengine_GN)
+
+            if node_tree.bl_idname == BEUtils.TYPE_SV:
+                gn_inputs_data = BEUtils.GetSVInputsData(node_tree)
+            else:
+                gn_inputs_data = BEUtils.GetGNInputsData(node_tree)
 
             js_output_data['Inputs'] = gn_inputs_data
 

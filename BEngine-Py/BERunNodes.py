@@ -43,9 +43,9 @@ try:
 
         be_paths = BEUtils.BEPaths()
 
-        process_obj, geom_mod, bengine_GN = BEUtils.LoadGN(context, be_paths)
+        process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_paths)
 
-        if (process_obj and bengine_GN):
+        if node_tree:
 
             # ORIGINAL STUFF
             with open(be_paths.be_tmp_folder + "BEngineInputs.json") as js_file:
@@ -56,30 +56,47 @@ try:
 
             engine_type = js_input_data["BEngineType"]
 
-            # Set Transform
-            process_obj.location = js_input_data["Pos"]
-            BEUtils.SetRotationFromJSON(process_obj, js_input_data["Rot"], engine_type)
-            process_obj.scale = js_input_data["Scale"]
+            # If GN
+            if node_tree.bl_idname == BEUtils.TYPE_GN and process_gn_obj:
+                # Set Transform
+                process_gn_obj.location = js_input_data["Pos"]
+                BEUtils.SetRotationFromJSON(process_gn_obj, js_input_data["Rot"], engine_type)
+                process_gn_obj.scale = js_input_data["Scale"]
 
-            # Setup inputs
-            BEUtils.SetupInputsFromJSON(context, bengine_GN, geom_mod,
-                                        js_input_data["BEngineInputs"], be_paths, engine_type)
-            # geom_mod.show_viewport = True
+                # Setup inputs
+                BEUtils.SetupInputsFromJSON(context, node_tree, geom_mod,
+                                            js_input_data["BEngineInputs"], be_paths, engine_type)
+                # geom_mod.show_viewport = True
 
-            # Set the GN Object Active and Selected
-            bpy.ops.object.select_all(action='DESELECT')
-            process_obj.select_set(True)
-            context.view_layer.objects.active = process_obj
+                # Set the GN Object Active and Selected
+                bpy.ops.object.select_all(action='DESELECT')
+                process_gn_obj.select_set(True)
+                context.view_layer.objects.active = process_gn_obj
 
-            process_obj.data.update()
+                process_gn_obj.data.update()
 
-            # Save Node Outputs
-            BEUtils.SaveBlenderOutputs(context, process_obj, be_paths, engine_type)
+                # Save Node Outputs
+                BEUtils.SaveBlenderOutputs(context, process_gn_obj, be_paths, engine_type)
+
+            # If SV
+            elif node_tree.bl_idname == BEUtils.TYPE_SV:
+                # Setup inputs
+                BEUtils.SetupInputsFromJSON(context, node_tree, None,
+                                            js_input_data["BEngineInputs"], be_paths, engine_type)
+
+                process_gn_obj.data.update()
+
+                # Save Node Outputs
+                BEUtils.SaveBlenderOutputs(context, None, be_paths, engine_type)
+
+            else:
+                print("Nodes were not Loaded! Please check Paths and NodeTree Name!")
+                return False
 
             return True
 
         else:
-            print("Geometry Nodes were not Loaded! Please check Paths!")
+            print("Nodes were not Loaded! Please check Paths and NodeTree Name!")
             return False
 
 
