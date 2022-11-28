@@ -752,7 +752,11 @@ def SaveBlenderOutputs(context, process_objs: list, be_paths: BEPaths, engine_ty
 
     # GET Evaluated Objects
     for obj in process_objs:
-        ev_objs.append(depsgraph.objects[obj.name])
+        if obj.name in depsgraph.objects.keys():
+            ev_objs.append(depsgraph.objects[obj.name])
+        elif obj.name in bpy.data.objects.keys():
+            ev_objs.append(bpy.data.objects[obj.name])
+
 
     ev_objs_set = set(ev_objs)
 
