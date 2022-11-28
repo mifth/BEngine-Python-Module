@@ -76,18 +76,22 @@ try:
                 process_gn_obj.data.update()
 
                 # Save Node Outputs
-                BEUtils.SaveBlenderOutputs(context, process_gn_obj, be_paths, engine_type)
+                BEUtils.SaveBlenderOutputs(context, [process_gn_obj], be_paths, engine_type, True)
 
             # If SV
             elif node_tree.bl_idname == BEUtils.TYPE_SV:
+                # node_tree = node_tree.evaluated_get(context.evaluated_depsgraph_get())
+
                 # Setup inputs
                 BEUtils.SetupInputsFromJSON(context, node_tree, None,
                                             js_input_data["BEngineInputs"], be_paths, engine_type)
 
-                process_gn_obj.data.update()
+                # Update All Nodes
+                # node_tree.update()
+                node_tree.process_ani(True, False)
 
                 # Save Node Outputs
-                BEUtils.SaveBlenderOutputs(context, None, be_paths, engine_type)
+                BEUtils.SaveBlenderOutputs(context, BEUtils.GetSVOutputObjects(node_tree), be_paths, engine_type, False)
 
             else:
                 print("Nodes were not Loaded! Please check Paths and NodeTree Name!")

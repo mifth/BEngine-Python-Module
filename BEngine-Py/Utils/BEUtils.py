@@ -173,15 +173,57 @@ def SetBaseInputValues(input_data, input, is_GN: bool):
                 input_data['DefaultValue'] = input['BEVectorMax']
 
 
+def GetSVOutputObjects(node_tree):
+    sv_out_nodes = []
+    sv_out_objs = []
 
-def GetSVInputNodes(node_group):
+    for node in node_tree.nodes:
+        if node.bl_idname == TYPE_SV_SCRIPT:
+            if SVConstants.SV_OUTPUT_OBJ in node.script_name:
+                sv_out_nodes.append(node)
+
+    sv_out_nodes.sort(key=lambda x: x.location.y)
+    sv_out_nodes.reverse()
+
+    for node in sv_out_nodes:
+        try:
+            socket_objs = node.inputs[0].sv_get(default=None)
+            sv_out_objs += socket_objs
+        except:
+            print("No Objects/Meshes in BEObjectsOutput Node: " + node.name)
+
+    return sv_out_objs
+
+
+def GetSVInputNodes(node_tree):
     sv_input_nodes = []
 
-    for node in node_group.nodes:
+    for node in node_tree.nodes:
         if node.bl_idname == TYPE_SV_SCRIPT:
             for in_out_name in SVConstants.SV_Inputs:
                 if in_out_name in node.script_name:
-                    sv_input_nodes.append([in_out_name, node])
+                    the_name = ''
+
+                    # Set Type
+                    match in_out_name:
+                        case SVConstants.SV_INPUT_BOOL:
+                            the_name = 'BOOLEAN'
+                        case SVConstants.SV_INPUT_COLL:
+                            the_name = 'COLLECTION'
+                        case SVConstants.SV_INPUT_COLOR:
+                            the_name = 'RGBA'
+                        case SVConstants.SV_INPUT_FLOAT:
+                            the_name = 'VALUE'
+                        case SVConstants.SV_INPUT_INT:
+                            the_name = 'INT'
+                        case SVConstants.SV_INPUT_OBJ:
+                            the_name = 'OBJECT'
+                        case SVConstants.SV_INPUT_STR:
+                            the_name = 'STRING'
+                        case SVConstants.SV_INPUT_VEC:
+                            the_name = 'VECTOR'
+
+                    sv_input_nodes.append((the_name, node))
                     break
 
     sv_input_nodes.sort(key=lambda x: x[1].location.y)
@@ -196,31 +238,12 @@ def GetSVInputsData(node_group):   # ADD IMAGE AND MATERIAL!!!!!!!!!!!!!!!!!!!!!
     sv_input_nodes = GetSVInputNodes(node_group)
 
     for sv_node_stuff in sv_input_nodes:
-        sv_node_name = sv_node_stuff[0]
         sv_node = sv_node_stuff[1]
         input_data = {}
 
         input_data['Name'] = sv_node['BEInputName']
         input_data['Identifier'] = sv_node.node_id
-
-        # Set Type
-        match sv_node_name:
-            case SVConstants.SV_INPUT_BOOL:
-                input_data['Type'] = 'BOOLEAN'
-            case SVConstants.SV_INPUT_COLL:
-                input_data['Type'] = 'COLLECTION'
-            case SVConstants.SV_INPUT_COLOR:
-                input_data['Type'] = 'RGBA'
-            case SVConstants.SV_INPUT_FLOAT:
-                input_data['Type'] = 'VALUE'
-            case SVConstants.SV_INPUT_INT:
-                input_data['Type'] = 'INT'
-            case SVConstants.SV_INPUT_OBJ:
-                input_data['Type'] = 'OBJECT'
-            case SVConstants.SV_INPUT_STR:
-                input_data['Type'] = 'STRING'
-            case SVConstants.SV_INPUT_VEC:
-                input_data['Type'] = 'VECTOR'
+        input_data['Type'] = sv_node_stuff[0]
 
         # Set Default/Min/Max Values
         SetBaseInputValues(input_data, sv_node, False)
@@ -250,6 +273,7 @@ def GetGNInputsData(node_group):
 def LoadNodesTreeFromJSON(context, be_paths: BEPaths):
 
     bpy.ops.wm.link(filepath=be_paths.filepath, filename=be_paths.filename, directory=be_paths.directory)
+    # bpy.ops.wm.append(filepath=be_paths.filepath, filename=be_paths.filename, directory=be_paths.directory)
 
     if (bpy.data.node_groups):
         node_tree = bpy.data.node_groups[be_paths.node_sys_name]
@@ -273,6 +297,10 @@ def LoadNodesTreeFromJSON(context, be_paths: BEPaths):
             # geom_mod.show_viewport = False  # Modifier is switched off during loading
             geom_mod.node_group = node_tree
 
+        # else:
+        #     # Switch Off Auto Update
+        #     node_tree.sv_process = False
+
         return process_gn_obj, geom_mod, node_tree
     
     return None, None, None
@@ -281,34 +309,83 @@ def LoadNodesTreeFromJSON(context, be_paths: BEPaths):
 def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                         be_paths: BEPaths, engine_type: str):
 
+    is_GN = node_tree.bl_idname == TYPE_GN
+
     coll_idx = 0
 
-    for input in node_tree.inputs.items():
-        node_id = input[1].identifier
+    # GN - Inputs
+    # SV - SVInputNodes
+    if is_GN:
+        input_items = node_tree.inputs.items()
+    else:
+        input_items = GetSVInputNodes(node_tree)
 
-        if node_id in js_input_data.keys() and input[1].type == js_input_data[node_id]["Type"]:
-            
+    for input in input_items:
+
+        if is_GN:
+            node_id = input[1].identifier
+        else:
+            node_id = input[1].node_id
+
+        if node_id in js_input_data.keys():
+
+            # Check if the same type
+            if is_GN:
+                is_same_type = (input[1].type == js_input_data[node_id]["Type"])
+
+                if not is_same_type:
+                    print("!Input " + input[1].name + " is not the same type! " + input[1].type + " " + js_input_data[node_id]["Type"])
+                    continue
+
+            else:
+                is_same_type = (input[0] == js_input_data[node_id]["Type"])
+
+                if not is_same_type:
+                    print("!Input " + input[1].name + " is not the same type! " + input[0] + " " + js_input_data[node_id]["Type"])
+                    continue
+
+            # Run Main Stuff
             js_prop = js_input_data[node_id]
 
             if "Value" in js_prop.keys() and js_prop["Value"] is not None:
 
                 match js_prop["Type"]:
                     case "RGBA":
-                        prop_value = js_prop["Value"]
+                        if is_GN:
+                            GN_mod[input[1].identifier][0] = js_prop["Value"][0]
+                            GN_mod[input[1].identifier][1] = js_prop["Value"][1]
+                            GN_mod[input[1].identifier][2] = js_prop["Value"][2]
+                            GN_mod[input[1].identifier][3] = js_prop["Value"][3]
+                        else:
+                            input[1]['BEColor'][0] = js_prop["Value"][0]
+                            input[1]['BEColor'][1] = js_prop["Value"][1]
+                            input[1]['BEColor'][2] = js_prop["Value"][2]
+                            input[1]['BEColor'][3] = js_prop["Value"][3]
 
                     case "VECTOR":
-                        prop_value = js_prop["Value"]
+                        if is_GN:
+                            GN_mod[input[1].identifier][0] = js_prop["Value"][0]
+                            GN_mod[input[1].identifier][1] = js_prop["Value"][1]
+                            GN_mod[input[1].identifier][2] = js_prop["Value"][2]
+                        else:
+                            input[1]['BEVector'][0] = js_prop["Value"][0]
+                            input[1]['BEVector'][1] = js_prop["Value"][1]
+                            input[1]['BEVector'][2] = js_prop["Value"][2]
 
                     case "IMAGE":
                         new_img = bpy.data.images.load(be_paths.project_path_2 + js_prop["Value"])
-                        prop_value = new_img
+
+                        if is_GN:
+                            GN_mod[input[1].identifier] = new_img
 
                     # case "TEXTURE":
                     #     pass
 
                     case "MATERIAL":
                         mat = bpy.data.materials.new(name="BEMaterial")
-                        prop_value = mat
+
+                        if is_GN:
+                            GN_mod[input[1].identifier] = mat
 
                     case "OBJECT":
                         js_obj_val = js_prop["Value"]
@@ -335,7 +412,10 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                                 be_obj = be_objs[0]
                                 context.collection.objects.link(be_objs[0])
 
-                        prop_value = be_obj
+                        if is_GN:
+                            GN_mod[input[1].identifier] = be_obj
+                        else:
+                            input[1]['BEObject'] = be_obj.name
 
                     case "COLLECTION":
                         js_coll_val = js_prop["Value"]
@@ -348,30 +428,43 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                         for obj in be_coll_objs:
                             be_coll.objects.link(obj)
 
-                        prop_value = be_coll
+                        if is_GN:
+                            GN_mod[input[1].identifier] = be_coll
+                        else:
+                            input[1]['BECollection'] = be_coll.name
 
                         coll_idx += 1
 
                     case "VALUE":
-                        prop_value = float(js_prop["Value"])
+                        if is_GN:
+                            GN_mod[input[1].identifier] = float(js_prop["Value"])
+                        else:
+                            input[1]['BEFloat'] = float(js_prop["Value"])
+
+                    case "INT":
+                        if is_GN:
+                            GN_mod[input[1].identifier] = js_prop["Value"]
+                        else:
+                            input[1]['BEInteger'] = js_prop["Value"]
+
+                    case "STRING":
+                        if is_GN:
+                            GN_mod[input[1].identifier] = js_prop["Value"]
+                        else:
+                            input[1]['BEString'] = js_prop["Value"]
+
+                    case "BOOLEAN":
+                        if is_GN:
+                            GN_mod[input[1].identifier] = js_prop["Value"]
+                        else:
+                            input[1]['BEBoolean'] = js_prop["Value"]
 
                     case default:
-                        prop_value = js_prop["Value"]
+                        if is_GN:
+                            GN_mod[input[1].identifier] = js_prop["Value"]
 
-                #  Set Property Value
-                if js_prop["Type"] == "VECTOR":
-                    GN_mod[input[1].identifier][0] = prop_value[0]
-                    GN_mod[input[1].identifier][1] = prop_value[1]
-                    GN_mod[input[1].identifier][2] = prop_value[2]
-
-                elif js_prop["Type"] == "RGBA":
-                    GN_mod[input[1].identifier][0] = prop_value[0]
-                    GN_mod[input[1].identifier][1] = prop_value[1]
-                    GN_mod[input[1].identifier][2] = prop_value[2]
-                    GN_mod[input[1].identifier][3] = prop_value[3]
-
-                else:
-                    GN_mod[input[1].identifier] = prop_value
+                # else:
+                #     GN_mod[input[1].identifier] = prop_value
 
 
 def ParseObjectFromJSON(context, js_obj_val, engine_type: str, isCollection: bool, convert_to_meshes=False):
@@ -610,55 +703,85 @@ def SetTransformFromJSON(js_obj, be_obj, engine_type: str):
     be_obj.scale = js_obj["Scale"]
 
 
-def SaveBlenderOutputs(context, process_obj, be_paths: BEPaths, engine_type: str):
+def RecordObjectOutputToJSON(inst_dict, the_object, is_instance: bool):
+
+    if is_instance:
+        the_mesh = the_object.object.data
+        obj_type = the_object.object.type
+        true_obj = the_object.object
+    else:
+        the_mesh = the_object.data
+        obj_type = the_object.type
+        true_obj = the_object
+
+    if the_mesh not in inst_dict.keys():
+        inst_dict[the_mesh] = {}
+        inst_dict[the_mesh]["Transforms"] = []
+
+    cur_inst_data = inst_dict[the_mesh]
+
+    # Setup Transforms
+    inst_pos, inst_rot, inst_scale = the_object.matrix_world.decompose()
+
+    cur_inst_data["Transforms"].append((tuple(inst_pos), tuple(inst_rot.to_euler('XYZ')), tuple(inst_scale)))
+
+    # Setup bengine_instance Value and Mesh
+    if obj_type == "MESH":
+        if BENGINE_INSTANCE in the_mesh.attributes.keys():
+            if BENGINE_INSTANCE not in cur_inst_data.keys():
+                if len(the_mesh.attributes[BENGINE_INSTANCE].data) > 0:
+                    cur_inst_data["Bengine_Instance"] = the_mesh.attributes[BENGINE_INSTANCE].data[0].value
+        else:
+            if "Mesh" not in cur_inst_data.keys():
+                # GET INSTANCE MESH
+                cur_inst_data["Mesh"] = MeshToJSONData(true_obj)
+
+
+def SaveBlenderOutputs(context, process_objs: list, be_paths: BEPaths, engine_type: str, is_GN: bool):
 
     depsgraph = context.evaluated_depsgraph_get()
-    process_obj_ev = depsgraph.objects[process_obj.name]
 
     # MAIN Data
     js_output_data = {}  # Output JSON Data
     inst_dict = {}  # Instances Dictionary
     meshes = []  # All Meshes
     
+    # parse_objs = [process_objs]
+
+    ev_objs = []
+
+    # GET Evaluated Objects
+    for obj in process_objs:
+        ev_objs.append(depsgraph.objects[obj.name])
+
+    ev_objs_set = set(ev_objs)
+
+    if is_GN:
+        # GET MAIN MESH (FOR GN ONLY)!!!
+        main_mesh_dict = MeshToJSONData(ev_objs[0])
+
+        # If the main mesh has Verts/Polygons
+        # Only one mesh at the moment
+        if len(main_mesh_dict["Verts"]) > 0:
+            # meshes.insert(0, main_mesh_dict)
+            meshes.append(main_mesh_dict)  # Add mesh to a list
+
+        if meshes:
+            js_output_data["Meshes"] = meshes
+    else:
+        # GET SVERCHOK OBJECS AND MESHES
+        for obj in ev_objs:
+            RecordObjectOutputToJSON(inst_dict, obj, False)
+
     # GET INSTANCES
-    for object_instance in depsgraph.object_instances:
-        if object_instance.parent is process_obj_ev and object_instance.is_instance:
-            inst_data = object_instance.object.data
+    for obj_instance in depsgraph.object_instances:
+        if obj_instance.parent in ev_objs_set and obj_instance.is_instance:
 
-            if inst_data not in inst_dict.keys():
-                inst_dict[inst_data] = {}
-                inst_dict[inst_data]["Transforms"] = []
+            RecordObjectOutputToJSON(inst_dict, obj_instance, True)
 
-            cur_inst_data = inst_dict[inst_data]
-
-            # Setup Transforms
-            inst_pos, inst_rot, inst_scale = object_instance.matrix_world.decompose()
-            # inst_pos_loc, inst_rot_loc, inst_scale_loc = object_instance.object.matrix_local.decompose()
-
-            cur_inst_data["Transforms"].append((tuple(inst_pos), tuple(inst_rot.to_euler('XYZ')), tuple(inst_scale)))
-
-            # Setup bengine_instance Value and Mesh
-            if object_instance.object.type == "MESH":
-                if BENGINE_INSTANCE in inst_data.attributes.keys():
-                    if BENGINE_INSTANCE not in cur_inst_data.keys():
-                        if len(inst_data.attributes[BENGINE_INSTANCE].data) > 0:
-                            cur_inst_data["Bengine_Instance"] = inst_data.attributes[BENGINE_INSTANCE].data[0].value
-                else:
-                    if "Mesh" not in cur_inst_data.keys():
-                        # GET INSTANCE MESH
-                        cur_inst_data["Mesh"] = MeshToJSONData(object_instance.object)
-
-    js_output_data["Instances"] = list(inst_dict.values())
-
-    # GET MAIN MESH
-    mesh_dict = MeshToJSONData(process_obj_ev)
-
-    # Only one mesh at the moment
-    if len(mesh_dict["Verts"]) > 0:
-        meshes.append(mesh_dict)
-
-    if meshes:
-        js_output_data["Meshes"] = meshes
+    # Record Objects/Instances
+    if inst_dict:
+        js_output_data["Instances"] = list(inst_dict.values())
 
     gn_js_path = be_paths.be_tmp_folder + OUTPUT_JSON_NAME
 
