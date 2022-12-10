@@ -18,6 +18,9 @@ if 'BEFloatMax' not in self.keys():
     self['BEFloatMax'] = sys.float_info.max
 
 # Outputs
+self['BEFloatMin'] = min(self['BEFloatMin'], self['BEFloatMax'])
+self['BEFloatDefault'] = max(self['BEFloatMin'], min(self['BEFloatDefault'], self['BEFloatMax']))
+self['BEFloat'] = max(self['BEFloatMin'], min(self['BEFloat'], self['BEFloatMax']))
 float_out = [[self['BEFloat']]]
 
 # UI

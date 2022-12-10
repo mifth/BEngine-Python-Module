@@ -272,7 +272,7 @@ def GetGNInputsData(node_group):
 
 def LoadNodesTreeFromJSON(context, be_paths: BEPaths):
 
-    bpy.ops.wm.link(filepath=be_paths.filepath, filename=be_paths.filename, directory=be_paths.directory)
+    bpy.ops.wm.link(filepath=be_paths.filepath, filename=be_paths.filename, directory=be_paths.directory, link=False)
     # bpy.ops.wm.append(filepath=be_paths.filepath, filename=be_paths.filename, directory=be_paths.directory)
 
     if (bpy.data.node_groups):

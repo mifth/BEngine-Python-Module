@@ -18,6 +18,9 @@ if 'BEIntegerMax' not in self.keys():
     self['BEIntegerMax'] = 2147483647
 
 # Outputs
+self['BEIntegerMin'] = min(self['BEIntegerMin'], self['BEIntegerMax'])
+self['BEIntegerDefault'] = max(self['BEIntegerMin'], min(self['BEIntegerDefault'], self['BEIntegerMax']))
+self['BEInteger'] = max(self['BEIntegerMin'], min(self['BEInteger'], self['BEIntegerMax']))
 int_out = [[self['BEInteger']]]
 
 # UI

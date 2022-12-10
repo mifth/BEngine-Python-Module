@@ -88,6 +88,7 @@ try:
 
                 # Update All Nodes
                 # node_tree.update()
+                context.view_layer.update()
                 node_tree.process_ani(True, False)
 
                 # Save Node Outputs
