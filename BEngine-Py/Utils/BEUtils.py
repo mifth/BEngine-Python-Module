@@ -11,6 +11,10 @@ import numpy as np
 from math import degrees
 from mathutils import Color, Vector, Euler
 
+import bmesh
+import mathutils
+
+
 UV_NAMES = {"uv_map", "uv_map2", "uv_map3", "uv_map4", "uv_map5",
             "uv_map6", "uv_map7", "uv_map8", "uv_map9", "uv_map10"}
 
@@ -482,10 +486,7 @@ def ParseObjectFromJSON(context, js_obj_val, engine_type: str, isCollection: boo
     for i, js_obj in enumerate(js_obj_val):
         be_mesh_obj = None
         be_curves_obj = None
-
-        # # pass 0 index if it's Collection
-        # if isCollection and i == 0:
-        #     continue
+        be_terr_obj = None
 
         # Import Mesh
         if "Mesh" in js_obj:
@@ -501,7 +502,12 @@ def ParseObjectFromJSON(context, js_obj_val, engine_type: str, isCollection: boo
 
             be_objs.append(be_curves_obj)
 
-        if be_mesh_obj is None and be_curves_obj is None:
+        # Import Terrain
+        if "Terrain" in js_obj:
+            be_terr_obj = ImportTerrainFromJSON(context, js_obj, engine_type)
+            be_objs.append(be_terr_obj)
+
+        if be_mesh_obj is None and be_curves_obj is None and be_terr_obj is None:
             if isCollection:
                 # Add Empty
                 empty_obj = bpy.data.objects.new(js_obj["Name"], None )
@@ -660,6 +666,37 @@ def ImportCurvesFromJSON(context, js_obj, engine_type: str, import_as_curve: boo
     SetTransformFromJSON(js_obj, be_curve_obj, engine_type)
 
     return be_curve_obj
+
+
+def ImportTerrainFromJSON(context, js_obj, engine_type: str):
+    js_terr = js_obj["Terrain"]
+
+    if "Verts" in js_terr and js_terr["Verts"]:
+        verts_len = len(js_terr["Verts"])
+
+        bm = bmesh.new()
+        bmesh.ops.create_grid(bm, x_segments=js_terr["NumberSegmentsX"], y_segments=js_terr["NumberSegmentsY"], calc_uvs=False)
+
+        verts_len = len(js_terr["Verts"])
+
+        np_verts = np.asarray(js_terr["Verts"], dtype=np.float32)
+        np_verts.shape = len(np_verts) * 3
+
+        # bm.verts.foreach_set('co', np_verts)
+
+        new_mesh = bpy.data.meshes.new("BESubMesh")
+        bm.to_mesh(new_mesh)
+        bm.free()
+        
+        print(verts_len, len(np_verts), len(new_mesh.vertices))
+
+        new_mesh.vertices.foreach_set('co', np_verts)
+
+        new_mesh.update()
+
+        be_mesh_obj = bpy.data.objects.new(js_obj["Name"], new_mesh)
+
+        return be_mesh_obj
 
 
 # Create Mesh
