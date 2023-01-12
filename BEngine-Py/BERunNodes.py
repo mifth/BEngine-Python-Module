@@ -65,7 +65,7 @@ try:
 
                 # Setup inputs
                 BEUtils.SetupInputsFromJSON(context, node_tree, geom_mod,
-                                            js_input_data["BEngineInputs"], be_paths, engine_type)
+                                            js_input_data, be_paths, engine_type)
                 # geom_mod.show_viewport = True
 
                 # Set the GN Object Active and Selected
@@ -84,7 +84,7 @@ try:
 
                 # Setup inputs
                 BEUtils.SetupInputsFromJSON(context, node_tree, None,
-                                            js_input_data["BEngineInputs"], be_paths, engine_type)
+                                            js_input_data, be_paths, engine_type)
 
                 # Update All Nodes
                 # node_tree.update()

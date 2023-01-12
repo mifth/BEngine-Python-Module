@@ -313,6 +313,8 @@ def LoadNodesTreeFromJSON(context, be_paths: BEPaths):
 def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                         be_paths: BEPaths, engine_type: str):
 
+    js_inputs = js_input_data["BEngineInputs"]
+
     is_GN = node_tree.bl_idname == TYPE_GN
 
     coll_idx = 0
@@ -324,6 +326,8 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
     else:
         input_items = GetSVInputNodes(node_tree)
 
+    instanced_meshes = {}
+
     for input in input_items:
 
         if is_GN:
@@ -331,25 +335,25 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
         else:
             node_id = input[1].node_id
 
-        if node_id in js_input_data.keys():
+        if node_id in js_inputs.keys():
 
             # Check if the same type
             if is_GN:
-                is_same_type = (input[1].type == js_input_data[node_id]["Type"])
+                is_same_type = (input[1].type == js_inputs[node_id]["Type"])
 
                 if not is_same_type:
-                    print("!Input " + input[1].name + " is not the same type! " + input[1].type + " " + js_input_data[node_id]["Type"])
+                    print("!Input " + input[1].name + " is not the same type! " + input[1].type + " " + js_inputs[node_id]["Type"])
                     continue
 
             else:
-                is_same_type = (input[0] == js_input_data[node_id]["Type"])
+                is_same_type = (input[0] == js_inputs[node_id]["Type"])
 
                 if not is_same_type:
-                    print("!Input " + input[1].name + " is not the same type! " + input[0] + " " + js_input_data[node_id]["Type"])
+                    print("!Input " + input[1].name + " is not the same type! " + input[0] + " " + js_inputs[node_id]["Type"])
                     continue
 
             # Run Main Stuff
-            js_prop = js_input_data[node_id]
+            js_prop = js_inputs[node_id]
 
             if "Value" in js_prop.keys() and js_prop["Value"] is not None:
 
@@ -394,7 +398,9 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                     case "OBJECT":
                         js_obj_val = js_prop["Value"]
 
-                        be_objs, has_mesh = ParseObjectFromJSON(context, js_obj_val, engine_type, False, True)
+                        be_objs, has_mesh = ParseObjectFromJSON(context, js_obj_val,
+                                                                js_input_data, instanced_meshes,
+                                                                engine_type, False, True)
 
                         # Join Meshes
                         bpy.ops.object.select_all(action='DESELECT')
@@ -427,7 +433,9 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                         be_coll = bpy.data.collections.new('BEngine_' + str(coll_idx))
                         context.scene.collection.children.link(be_coll)
 
-                        be_coll_objs, has_mesh = ParseObjectFromJSON(context, js_coll_val, engine_type, True, False)
+                        be_coll_objs, has_mesh = ParseObjectFromJSON(context, js_coll_val,
+                                                                     js_input_data, instanced_meshes,
+                                                                     engine_type, True, False)
 
                         for obj in be_coll_objs:
                             be_coll.objects.link(obj)
@@ -471,16 +479,21 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                 #     GN_mod[input[1].identifier] = prop_value
 
 
-def ParseObjectFromJSON(context, js_obj_val, engine_type: str, isCollection: bool, convert_to_meshes=False):
+def ParseObjectFromJSON(context, js_obj_val, js_input_data, instanced_meshes,
+                        engine_type: str, isCollection: bool,
+                        convert_to_meshes=False):
     has_mesh = False
 
     be_objs = []
 
     # Check If it has Mesh
     for js_obj in js_obj_val:
-        if "Mesh" in js_obj and "Verts" in js_obj["Mesh"] and js_obj["Mesh"]["Verts"]:
-            has_mesh = True
-            break
+        if "Mesh" in js_obj:
+            tmp_jsmesh = js_input_data["Meshes"][js_obj["Mesh"]]
+
+            if "Verts" in tmp_jsmesh and tmp_jsmesh["Verts"]:
+                has_mesh = True
+                break
 
     # if hasMesh:
     for i, js_obj in enumerate(js_obj_val):
@@ -490,21 +503,34 @@ def ParseObjectFromJSON(context, js_obj_val, engine_type: str, isCollection: boo
 
         # Import Mesh
         if "Mesh" in js_obj:
-            be_mesh_obj = ImportMeshFromJSON(context, js_obj, engine_type)
+            if js_obj["Mesh"] not in instanced_meshes.keys():
+                js_mesh = js_input_data["Meshes"][js_obj["Mesh"]]
+                be_mesh = MeshFromJSON(js_mesh, engine_type)
+
+                instanced_meshes[js_obj["Mesh"]] = be_mesh
+            else:
+                be_mesh = instanced_meshes[js_obj["Mesh"]]
+
+            be_mesh_obj = ObjectFromJSON(js_obj, be_mesh, engine_type, True)
+
             be_objs.append(be_mesh_obj)
 
         # Import Curves
         if "Curves" in js_obj:
             if (convert_to_meshes):
-                be_curves_obj = ImportCurvesFromJSON(context, js_obj, engine_type, bool(1 - has_mesh))
+                be_curves_data = CurvesFromJSON(js_obj, engine_type, bool(1 - has_mesh))
             else:
-                be_curves_obj = ImportCurvesFromJSON(context, js_obj, engine_type, True)
+                be_curves_data = CurvesFromJSON(js_obj, engine_type, True)
+
+            be_curves_obj = ObjectFromJSON(js_obj, be_curves_data, engine_type, True)
 
             be_objs.append(be_curves_obj)
 
         # Import Terrain
         if "Terrain" in js_obj:
-            be_terr_obj = ImportTerrainFromJSON(context, js_obj, engine_type)
+            be_terr_mesh = TerrainMeshFromJSON(js_obj, engine_type)
+            be_terr_obj = ObjectFromJSON(js_obj, be_terr_mesh, engine_type, False)
+
             be_objs.append(be_terr_obj)
 
         if be_mesh_obj is None and be_curves_obj is None and be_terr_obj is None:
@@ -532,11 +558,12 @@ def ParseObjectFromJSON(context, js_obj_val, engine_type: str, isCollection: boo
 
                     be_objs.append(be_empty_main_obj)
 
+    instanced_meshes = None  # Clear Meshes
+
     return be_objs, has_mesh
 
 
-def ImportMeshFromJSON(context, js_obj, engine_type: str):
-    js_mesh = js_obj["Mesh"]
+def MeshFromJSON(js_mesh, engine_type: str):
 
     if "Verts" in js_mesh and js_mesh["Verts"]:
         verts_len = len(js_mesh["Verts"])
@@ -597,16 +624,12 @@ def ImportMeshFromJSON(context, js_obj, engine_type: str):
     else:
         new_mesh = bpy.data.meshes.new('BESubMesh')
 
-    be_mesh_obj = bpy.data.objects.new(js_obj["Name"], new_mesh)
-
-    SetTransformFromJSON(js_obj, be_mesh_obj, engine_type)
-
     # context.collection.objects.link(be_mesh_obj)
 
-    return be_mesh_obj
+    return new_mesh
 
 
-def ImportCurvesFromJSON(context, js_obj, engine_type: str, import_as_curve: bool):
+def CurvesFromJSON(js_obj, engine_type: str, import_as_curve: bool):
 
     js_curv = js_obj["Curves"]
     js_curve_elems = js_curv["CurveElements"]
@@ -660,15 +683,10 @@ def ImportCurvesFromJSON(context, js_obj, engine_type: str, import_as_curve: boo
 
         be_curv_data.from_pydata(verts, edges, [])
 
-    # Add Curve Object
-    be_curve_obj = bpy.data.objects.new(js_obj["Name"], be_curv_data)
-
-    SetTransformFromJSON(js_obj, be_curve_obj, engine_type)
-
-    return be_curve_obj
+    return be_curv_data
 
 
-def ImportTerrainFromJSON(context, js_obj, engine_type: str):
+def TerrainMeshFromJSON(js_obj, engine_type: str):
     js_terr = js_obj["Terrain"]
 
     if "Verts" in js_terr and js_terr["Verts"]:
@@ -687,16 +705,12 @@ def ImportTerrainFromJSON(context, js_obj, engine_type: str):
         new_mesh = bpy.data.meshes.new("BESubMesh")
         bm.to_mesh(new_mesh)
         bm.free()
-        
-        print(verts_len, len(np_verts), len(new_mesh.vertices))
 
         new_mesh.vertices.foreach_set('co', np_verts)
 
         new_mesh.update()
 
-        be_mesh_obj = bpy.data.objects.new(js_obj["Name"], new_mesh)
-
-        return be_mesh_obj
+        return new_mesh
 
 
 # Create Mesh
@@ -732,6 +746,15 @@ def CreateMesh(verts_len, polys_len, np_verts, np_poly_indices, np_normals):
     # be_sub_mesh.normals_split_custom_set(normals2)
 
     return mesh
+
+
+def ObjectFromJSON(js_obj, mesh, engine_type, do_transform: bool):
+    be_mesh_obj = bpy.data.objects.new(js_obj["Name"], mesh)
+
+    if do_transform:
+        SetTransformFromJSON(js_obj, be_mesh_obj, engine_type)
+
+    return be_mesh_obj
 
 
 def SetTransformFromJSON(js_obj, be_obj, engine_type: str):
