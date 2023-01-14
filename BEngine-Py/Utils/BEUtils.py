@@ -21,6 +21,7 @@ UV_NAMES = {"uv_map", "uv_map2", "uv_map3", "uv_map4", "uv_map5",
 BENGINE_INSTANCE = "be_instance"
 BENGINE_MATERIAL = "be_material"
 BENGINE_COLOR = "be_color"
+BENGINE_NORMAL = "be_normal"
 
 TYPE_GN = "GeometryNodeTree"
 TYPE_SV = "SverchCustomTreeType"
@@ -890,19 +891,25 @@ def MeshToJSONData(process_obj):
     # np_tris_loops.shape = (len(process_obj.data.loop_triangles), 3)
     # mesh_dict["Loops"] = np_tris_loops.tolist()
 
-    # calc split nomrals
-    process_obj.data.calc_normals_split()
+    # Get Normals
+    if BENGINE_NORMAL in process_obj.data.attributes.keys():
+        if process_obj.data.attributes[BENGINE_NORMAL].domain == 'CORNER':
+            np_normals = np.zeros(len(process_obj.data.attributes[BENGINE_NORMAL].data) * 3, dtype=np.float32)
+            process_obj.data.attributes[BENGINE_NORMAL].data.foreach_get('vector', np_normals)
+            np_normals.shape = (len(process_obj.data.attributes[BENGINE_NORMAL].data), 3)
+        else:
+            print("Attribute " + BENGINE_NORMAL + " must have FACECORNER domain!!!")
+            np_normals = GetMeshNormalsNumpy(process_obj)
+    else:
+        np_normals = GetMeshNormalsNumpy(process_obj)
 
-    # GET NORMALS
-    np_normals = np.zeros(len(process_obj.data.loops) * 3, dtype=np.float32)
-    process_obj.data.loops.foreach_get("normal", np_normals)
-    np_normals.shape = (len(process_obj.data.loops), 3)
     mesh_dict["Normals"] = np_normals.tolist()
 
     # GET UVS, Colors, Materials
     uvs_dict = {}
     np_col_attrib = None
 
+    # Get Attributes
     for attrib_name in process_obj.data.attributes.keys():
         if attrib_name in UV_NAMES:
 
@@ -926,7 +933,7 @@ def MeshToJSONData(process_obj):
                     uvs_dict[attrib_name] = np_uv_attrib.tolist()
 
             else:
-                print("Attribute " + attrib_name + "must have FACECORNER domain!!!")
+                print("Attribute " + attrib_name + " must have FACECORNER domain!!!")
 
         elif attrib_name == BENGINE_COLOR:
 
@@ -939,7 +946,7 @@ def MeshToJSONData(process_obj):
                 np_col_attrib.shape = (len(process_obj.data.attributes[attrib_name].data), 4)
                 mesh_dict["VertexColors"] = np_col_attrib.tolist()
             else:
-                print("Attribute " + attrib_name + "must have FACECORNER domain!!!")
+                print("Attribute " + attrib_name + " must have FACECORNER domain!!!")
 
         # Setup bengine_material Value
         elif attrib_name == BENGINE_MATERIAL:
@@ -948,12 +955,24 @@ def MeshToJSONData(process_obj):
                 process_obj.data.attributes[attrib_name].data.foreach_get('value', np_mat_attrib)
                 mesh_dict["Materials"] = np_mat_attrib.tolist()
             else:
-                print("Attribute " + attrib_name + "must have FACE domain!!!")
+                print("Attribute " + attrib_name + " must have FACE domain!!!")
 
     if uvs_dict:
         mesh_dict["UVs"] = uvs_dict
     
     return mesh_dict
+
+
+def GetMeshNormalsNumpy(process_obj):
+    # Calc Split Nomrals
+    process_obj.data.calc_normals_split()
+
+    # GET NORMALS
+    np_normals = np.zeros(len(process_obj.data.loops) * 3, dtype=np.float32)
+    process_obj.data.loops.foreach_get("normal", np_normals)
+    np_normals.shape = (len(process_obj.data.loops), 3)
+
+    return np_normals
 
 
 def SetRotationFromJSON(obj, js_euler, engine_type: str):
