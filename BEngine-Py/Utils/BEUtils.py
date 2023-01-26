@@ -489,12 +489,9 @@ def ParseObjectFromJSON(context, js_obj_val, js_input_data, instanced_meshes,
 
     # Check If it has Mesh
     for js_obj in js_obj_val:
-        if "Mesh" in js_obj:
-            tmp_jsmesh = js_input_data["Meshes"][js_obj["Mesh"]]
-
-            if "Verts" in tmp_jsmesh and tmp_jsmesh["Verts"]:
-                has_mesh = True
-                break
+        if "Mesh" in js_obj or "Terrain" in js_obj:
+            has_mesh = True
+            break
 
     # if hasMesh:
     for i, js_obj in enumerate(js_obj_val):
