@@ -4,7 +4,7 @@ import sys
 import os
 
 import json
-# from json.decoder import JSONDecodeError
+from json.decoder import JSONDecodeError
 
 import numpy as np
 
@@ -47,49 +47,85 @@ class SVConstants:
     SV_OUTPUT_OBJ = "BEObjectsOutput.py"
 
 
-class BEPaths:
+class BEProjectPaths:
 
     def __init__(self):
-        self.blendfile = ""
-        self.blendfolder = ""
-        self.section = "/NodeTree/"
-        self.node_sys_name = ""
-        self.be_tmp_folder = ""
-        self.project_path = ""
-        self.project_path_2 = ""
+        self.be_tmp_folder = None
+        self.project_path = None
+        self.project_path_2 = None
+
+        self.run_blender_Type = None
+        self.host = None
+        self.port = None
+        self.max_package_bytes = None
 
         args = sys.argv
 
         for arg in args:
-            if arg.startswith('BLENDFILE='):
-                self.blendfile = arg.replace('BLENDFILE=', '')
-
-            elif arg.startswith('BLENDFOLDER='):
-                self.blendfolder = arg.replace('BLENDFOLDER=', '')
-                
-                if not self.blendfolder.endswith('/'):
-                    self.blendfolder = self.blendfolder + "/"
-
-            elif arg.startswith('NODESYSNAME='):
-                self.node_sys_name = arg.replace('NODESYSNAME=', '')
-
-            elif arg.startswith('BE_TMP_FOLDER='):
+            if arg.startswith('BE_TMP_FOLDER='):
                 self.be_tmp_folder = arg.replace('BE_TMP_FOLDER=', '')
- 
             elif arg.startswith('PROJECT_PATH='):
                 self.project_path = arg.replace('PROJECT_PATH=', '')
- 
             elif arg.startswith('PROJECT_PATH_2='):
                 self.project_path_2 = arg.replace('PROJECT_PATH_2=', '')
+
+        # # Networking
+            elif arg.startswith('RunBlenderType='):
+                self.run_blender_Type = arg.replace('RunBlenderType=', '')
+            elif arg.startswith('Host='):
+                self.host = arg.replace('Host=', '')
+            elif arg.startswith('Port='):
+                self.port = int(arg.replace('Port=', ''))
+            elif arg.startswith('MaxPackageBytes='):
+                self.max_package_bytes = int(arg.replace('MaxPackageBytes=', ''))
+
+
+class BEBaseStuff:
+
+    def __init__(self, be_paths: dict):
+        self.section = "/NodeTree/"
+        self.blendfile = ""
+        self.blendfolder = ""
+        self.node_sys_name = ""
+
+        # if arg.startswith('BLENDFILE='):
+        self.blendfile = be_paths["BLENDFILE"]
+
+        # elif arg.startswith('BLENDFOLDER='):
+        self.blendfolder = be_paths["BLENDFOLDER"]
+        if not self.blendfolder.endswith('/'):
+            self.blendfolder = self.blendfolder + "/"
+
+        # elif arg.startswith('NODESYSNAME='):
+        self.node_sys_name = be_paths["NODESYSNAME"]
 
         # blend file name
         self.blendfile_basename = os.path.basename(self.blendfile)
         self.blendfile_name = os.path.splitext(self.blendfile_basename)[0]
 
-        # Load GN
+        # Load GN Paths
         self.filepath = self.blendfile + self.section + self.node_sys_name
         self.directory = self.blendfile + self.section
         self.filename = self.node_sys_name
+
+        self.be_type = be_paths["BEngineType"]
+
+        # # Networking
+        # self.RunBlenderType = be_paths["RunBlenderType"]
+        # self.Host = be_paths["Host"]
+        # self.Port = be_paths["Port"]
+        # self.MaxPackageBytes = be_paths["MaxPackageBytes"]
+
+
+def LoadJSON(bengineInputs_path: str):
+    with open(bengineInputs_path) as js_file:
+        try:
+            js_input_data = json.load(js_file)
+        except JSONDecodeError:
+            print("Problem to Open File: " + bengineInputs_path)
+            js_input_data = None
+
+    return js_input_data
 
 
 def SaveJSON(gn_js_path, js_data):
@@ -275,13 +311,13 @@ def GetGNInputsData(node_group):
     return gn_inputs_data
 
 
-def LoadNodesTreeFromJSON(context, be_paths: BEPaths):
+def LoadNodesTreeFromJSON(context, be_paths: BEProjectPaths, be_base_stuff: BEBaseStuff):
 
-    bpy.ops.wm.link(filepath=be_paths.filepath, filename=be_paths.filename, directory=be_paths.directory, link=False)
-    # bpy.ops.wm.append(filepath=be_paths.filepath, filename=be_paths.filename, directory=be_paths.directory)
+    bpy.ops.wm.link(filepath=be_base_stuff.filepath, filename=be_base_stuff.filename,
+                    directory=be_base_stuff.directory, link=False)
 
     if (bpy.data.node_groups):
-        node_tree = bpy.data.node_groups[be_paths.node_sys_name]
+        node_tree = bpy.data.node_groups[be_base_stuff.node_sys_name]
 
         process_gn_obj = None
         geom_mod = None
@@ -312,7 +348,7 @@ def LoadNodesTreeFromJSON(context, be_paths: BEPaths):
 
 
 def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
-                        be_paths: BEPaths, engine_type: str):
+                        be_paths: BEProjectPaths, engine_type: str):
 
     js_inputs = js_input_data["BEngineInputs"]
 
@@ -795,7 +831,7 @@ def RecordObjectOutputToJSON(inst_dict, the_object, is_instance: bool):
                 cur_inst_data["Mesh"] = MeshToJSONData(true_obj)
 
 
-def SaveBlenderOutputs(context, process_objs: list, be_paths: BEPaths, engine_type: str, is_GN: bool):
+def SaveBlenderOutputs(context, process_objs: list, be_paths: BEProjectPaths, engine_type: str, is_GN: bool):
 
     depsgraph = context.evaluated_depsgraph_get()
 

@@ -35,9 +35,15 @@ try:
 
         BEUtils.ClearScene()
 
-        be_paths = BEUtils.BEPaths()
+        be_proj_paths = BEUtils.BEProjectPaths()
 
-        process_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_paths)
+        # Base Stuff
+        beBaseStuff_path = be_proj_paths.be_tmp_folder + "BEngineBaseFromEngine.json"
+        js_base_stuff = BEUtils.LoadJSON(beBaseStuff_path)
+
+        be_base_stuff = BEUtils.BEBaseStuff(js_base_stuff)
+
+        process_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_proj_paths, be_base_stuff)
 
         if node_tree:
 
@@ -53,7 +59,7 @@ try:
             js_output_data['Inputs'] = gn_inputs_data
 
             # If No JSON File
-            gn_js_path = be_paths.blendfolder + be_paths.blendfile_name + '_' + be_paths.node_sys_name + '.json'
+            gn_js_path = be_base_stuff.blendfolder + be_base_stuff.blendfile_name + '_' + be_base_stuff.node_sys_name + '.json'
             BEUtils.SaveJSON(gn_js_path, js_output_data)
 
             return True
