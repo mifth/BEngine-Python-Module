@@ -88,16 +88,13 @@ class BEBaseStuff:
         self.blendfolder = ""
         self.node_sys_name = ""
 
-        # if arg.startswith('BLENDFILE='):
-        self.blendfile = be_paths["BLENDFILE"]
+        self.blendfile = be_paths["BlendFile"]
 
-        # elif arg.startswith('BLENDFOLDER='):
-        self.blendfolder = be_paths["BLENDFOLDER"]
+        self.blendfolder = be_paths["BlendFolder"]
         if not self.blendfolder.endswith('/'):
             self.blendfolder = self.blendfolder + "/"
 
-        # elif arg.startswith('NODESYSNAME='):
-        self.node_sys_name = be_paths["NODESYSNAME"]
+        self.node_sys_name = be_paths["NodeSysName"]
 
         # blend file name
         self.blendfile_basename = os.path.basename(self.blendfile)
@@ -109,6 +106,8 @@ class BEBaseStuff:
         self.filename = self.node_sys_name
 
         self.be_type = be_paths["BEngineType"]
+
+        self.run_type = be_paths["RunNodesType"]
 
         # # Networking
         # self.RunBlenderType = be_paths["RunBlenderType"]
