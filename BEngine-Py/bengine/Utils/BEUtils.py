@@ -1,119 +1,18 @@
 import bpy
 
-import sys
-import os
-
 import json
 from json.decoder import JSONDecodeError
 
 import numpy as np
 
-from math import degrees
+# from math import degrees
+import mathutils
 from mathutils import Color, Vector, Euler
 
 import bmesh
-import mathutils
 
-
-UV_NAMES = {"uv_map", "uv_map2", "uv_map3", "uv_map4", "uv_map5",
-            "uv_map6", "uv_map7", "uv_map8", "uv_map9", "uv_map10"}
-
-BENGINE_INSTANCE = "be_instance"
-BENGINE_MATERIAL = "be_material"
-BENGINE_COLOR = "be_color"
-BENGINE_NORMAL = "be_normal"
-
-TYPE_GN = "GeometryNodeTree"
-TYPE_SV = "SverchCustomTreeType"
-TYPE_SV_SCRIPT = "SvScriptNodeLite"
-
-OUTPUT_JSON_NAME = "BlenderOutputs.json"
-
-
-class SVConstants:
-    SV_INPUT_BOOL = "BEBoolean.py"
-    SV_INPUT_COLL = "BECollection.py"
-    SV_INPUT_COLOR = "BEColor.py"
-    SV_INPUT_FLOAT = "BEFloat.py"
-    SV_INPUT_INT = "BEInteger.py"
-    SV_INPUT_OBJ = "BEObject.py"
-    SV_INPUT_STR = "BEString.py"
-    SV_INPUT_VEC = "BEVector.py"
-
-    SV_Inputs = (SV_INPUT_BOOL, SV_INPUT_COLL, SV_INPUT_COLOR, 
-                    SV_INPUT_FLOAT, SV_INPUT_INT, SV_INPUT_OBJ,
-                    SV_INPUT_STR, SV_INPUT_VEC)
-
-    SV_OUTPUT_OBJ = "BEObjectsOutput.py"
-
-
-class BEProjectPaths:
-
-    def __init__(self):
-        self.be_tmp_folder = None
-        self.project_path = None
-        self.project_path_2 = None
-
-        self.run_blender_Type = None
-        self.host = None
-        self.port = None
-        self.max_package_bytes = None
-
-        args = sys.argv
-
-        for arg in args:
-            if arg.startswith('BE_TMP_FOLDER='):
-                self.be_tmp_folder = arg.replace('BE_TMP_FOLDER=', '')
-            elif arg.startswith('PROJECT_PATH='):
-                self.project_path = arg.replace('PROJECT_PATH=', '')
-            elif arg.startswith('PROJECT_PATH_2='):
-                self.project_path_2 = arg.replace('PROJECT_PATH_2=', '')
-
-        # # Networking
-            elif arg.startswith('RunBlenderType='):
-                self.run_blender_Type = arg.replace('RunBlenderType=', '')
-            elif arg.startswith('Host='):
-                self.host = arg.replace('Host=', '')
-            elif arg.startswith('Port='):
-                self.port = int(arg.replace('Port=', ''))
-            elif arg.startswith('MaxPackageBytes='):
-                self.max_package_bytes = int(arg.replace('MaxPackageBytes=', ''))
-
-
-class BEBaseStuff:
-
-    def __init__(self, be_paths: dict):
-        self.section = "/NodeTree/"
-        self.blendfile = ""
-        self.blendfolder = ""
-        self.node_sys_name = ""
-
-        self.blendfile = be_paths["BlendFile"]
-
-        self.blendfolder = be_paths["BlendFolder"]
-        if not self.blendfolder.endswith('/'):
-            self.blendfolder = self.blendfolder + "/"
-
-        self.node_sys_name = be_paths["NodeSysName"]
-
-        # blend file name
-        self.blendfile_basename = os.path.basename(self.blendfile)
-        self.blendfile_name = os.path.splitext(self.blendfile_basename)[0]
-
-        # Load GN Paths
-        self.filepath = self.blendfile + self.section + self.node_sys_name
-        self.directory = self.blendfile + self.section
-        self.filename = self.node_sys_name
-
-        self.be_type = be_paths["BEngineType"]
-
-        self.run_type = be_paths["RunNodesType"]
-
-        # # Networking
-        # self.RunBlenderType = be_paths["RunBlenderType"]
-        # self.Host = be_paths["Host"]
-        # self.Port = be_paths["Port"]
-        # self.MaxPackageBytes = be_paths["MaxPackageBytes"]
+from .. import BESettings
+from ..BESettings import BaseStuff, StartParams
 
 
 def LoadJSON(bengineInputs_path: str):
@@ -218,8 +117,8 @@ def GetSVOutputObjects(node_tree):
     sv_out_objs = []
 
     for node in node_tree.nodes:
-        if node.bl_idname == TYPE_SV_SCRIPT:
-            if SVConstants.SV_OUTPUT_OBJ in node.script_name:
+        if node.bl_idname == BESettings.TYPE_SV_SCRIPT:
+            if BESettings.SVConstants.SV_OUTPUT_OBJ in node.script_name:
                 sv_out_nodes.append(node)
 
     sv_out_nodes.sort(key=lambda x: x.location.y)
@@ -239,28 +138,28 @@ def GetSVInputNodes(node_tree):
     sv_input_nodes = []
 
     for node in node_tree.nodes:
-        if node.bl_idname == TYPE_SV_SCRIPT:
-            for in_out_name in SVConstants.SV_Inputs:
+        if node.bl_idname == BESettings.TYPE_SV_SCRIPT:
+            for in_out_name in BESettings.SVConstants.SV_Inputs:
                 if in_out_name in node.script_name:
                     the_name = ''
 
                     # Set Type
                     match in_out_name:
-                        case SVConstants.SV_INPUT_BOOL:
+                        case BESettings.SVConstants.SV_INPUT_BOOL:
                             the_name = 'BOOLEAN'
-                        case SVConstants.SV_INPUT_COLL:
+                        case BESettings.SVConstants.SV_INPUT_COLL:
                             the_name = 'COLLECTION'
-                        case SVConstants.SV_INPUT_COLOR:
+                        case BESettings.SVConstants.SV_INPUT_COLOR:
                             the_name = 'RGBA'
-                        case SVConstants.SV_INPUT_FLOAT:
+                        case BESettings.SVConstants.SV_INPUT_FLOAT:
                             the_name = 'VALUE'
-                        case SVConstants.SV_INPUT_INT:
+                        case BESettings.SVConstants.SV_INPUT_INT:
                             the_name = 'INT'
-                        case SVConstants.SV_INPUT_OBJ:
+                        case BESettings.SVConstants.SV_INPUT_OBJ:
                             the_name = 'OBJECT'
-                        case SVConstants.SV_INPUT_STR:
+                        case BESettings.SVConstants.SV_INPUT_STR:
                             the_name = 'STRING'
-                        case SVConstants.SV_INPUT_VEC:
+                        case BESettings.SVConstants.SV_INPUT_VEC:
                             the_name = 'VECTOR'
 
                     sv_input_nodes.append((the_name, node))
@@ -310,7 +209,7 @@ def GetGNInputsData(node_group):
     return gn_inputs_data
 
 
-def LoadNodesTreeFromJSON(context, be_paths: BEProjectPaths, be_base_stuff: BEBaseStuff):
+def LoadNodesTreeFromJSON(context, be_paths: StartParams, be_base_stuff: BaseStuff):
 
     bpy.ops.wm.link(filepath=be_base_stuff.filepath, filename=be_base_stuff.filename,
                     directory=be_base_stuff.directory, link=False)
@@ -322,7 +221,7 @@ def LoadNodesTreeFromJSON(context, be_paths: BEProjectPaths, be_base_stuff: BEBa
         geom_mod = None
 
         # If GN NodeTree
-        if node_tree.bl_idname == TYPE_GN:
+        if node_tree.bl_idname == BESettings.TYPE_GN:
             # Create New Object
             process_mesh = bpy.data.meshes.new('emptyMesh')
             process_gn_obj = bpy.data.objects.new("BEngineProcess", process_mesh)
@@ -347,11 +246,11 @@ def LoadNodesTreeFromJSON(context, be_paths: BEProjectPaths, be_base_stuff: BEBa
 
 
 def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
-                        be_paths: BEProjectPaths, engine_type: str):
+                        be_paths: StartParams, engine_type: str):
 
     js_inputs = js_input_data["BEngineInputs"]
 
-    is_GN = node_tree.bl_idname == TYPE_GN
+    is_GN = node_tree.bl_idname == BESettings.TYPE_GN
 
     coll_idx = 0
 
@@ -820,17 +719,17 @@ def RecordObjectOutputToJSON(inst_dict, the_object, is_instance: bool):
 
     # Setup bengine_instance Value and Mesh
     if obj_type == "MESH":
-        if BENGINE_INSTANCE in the_mesh.attributes.keys():
-            if BENGINE_INSTANCE not in cur_inst_data.keys():
-                if len(the_mesh.attributes[BENGINE_INSTANCE].data) > 0:
-                    cur_inst_data["Bengine_Instance"] = the_mesh.attributes[BENGINE_INSTANCE].data[0].value
+        if BESettings.BENGINE_INSTANCE in the_mesh.attributes.keys():
+            if BESettings.BENGINE_INSTANCE not in cur_inst_data.keys():
+                if len(the_mesh.attributes[BESettings.BENGINE_INSTANCE].data) > 0:
+                    cur_inst_data["Bengine_Instance"] = the_mesh.attributes[BESettings.BENGINE_INSTANCE].data[0].value
         else:
             if "Mesh" not in cur_inst_data.keys():
                 # GET INSTANCE MESH
                 cur_inst_data["Mesh"] = MeshToJSONData(true_obj)
 
 
-def SaveBlenderOutputs(context, process_objs: list, be_paths: BEProjectPaths, engine_type: str, is_GN: bool):
+def SaveBlenderOutputs(context, process_objs: list, be_paths: StartParams, engine_type: str, is_GN: bool):
 
     depsgraph = context.evaluated_depsgraph_get()
 
@@ -880,9 +779,10 @@ def SaveBlenderOutputs(context, process_objs: list, be_paths: BEProjectPaths, en
     if inst_dict:
         js_output_data["Instances"] = list(inst_dict.values())
 
-    gn_js_path = be_paths.be_tmp_folder + OUTPUT_JSON_NAME
+    # gn_js_path = be_paths.be_tmp_folder + BESettings.OUTPUT_JSON_NAME
+    # SaveJSON(gn_js_path, js_output_data)
 
-    SaveJSON(gn_js_path, js_output_data)
+    return js_output_data
 
 
 def MeshToJSONData(process_obj):
@@ -924,13 +824,13 @@ def MeshToJSONData(process_obj):
     # mesh_dict["Loops"] = np_tris_loops.tolist()
 
     # Get Normals
-    if BENGINE_NORMAL in process_obj.data.attributes.keys():
-        if process_obj.data.attributes[BENGINE_NORMAL].domain == 'CORNER':
-            np_normals = np.zeros(len(process_obj.data.attributes[BENGINE_NORMAL].data) * 3, dtype=np.float32)
-            process_obj.data.attributes[BENGINE_NORMAL].data.foreach_get('vector', np_normals)
-            np_normals.shape = (len(process_obj.data.attributes[BENGINE_NORMAL].data), 3)
+    if BESettings.BENGINE_NORMAL in process_obj.data.attributes.keys():
+        if process_obj.data.attributes[BESettings.BENGINE_NORMAL].domain == 'CORNER':
+            np_normals = np.zeros(len(process_obj.data.attributes[BESettings.BENGINE_NORMAL].data) * 3, dtype=np.float32)
+            process_obj.data.attributes[BESettings.BENGINE_NORMAL].data.foreach_get('vector', np_normals)
+            np_normals.shape = (len(process_obj.data.attributes[BESettings.BENGINE_NORMAL].data), 3)
         else:
-            print("Attribute " + BENGINE_NORMAL + " must have FACECORNER domain!!!")
+            print("Attribute " + BESettings.BENGINE_NORMAL + " must have FACECORNER domain!!!")
             np_normals = GetMeshNormalsNumpy(process_obj)
     else:
         np_normals = GetMeshNormalsNumpy(process_obj)
@@ -943,7 +843,7 @@ def MeshToJSONData(process_obj):
 
     # Get Attributes
     for attrib_name in process_obj.data.attributes.keys():
-        if attrib_name in UV_NAMES:
+        if attrib_name in BESettings.UV_NAMES:
 
             if process_obj.data.attributes[attrib_name].domain == 'CORNER':
                 if (len(process_obj.data.attributes[attrib_name].data) > 0):
@@ -967,7 +867,7 @@ def MeshToJSONData(process_obj):
             else:
                 print("Attribute " + attrib_name + " must have FACECORNER domain!!!")
 
-        elif attrib_name == BENGINE_COLOR:
+        elif attrib_name == BESettings.BENGINE_COLOR:
 
             if process_obj.data.attributes[attrib_name].domain == 'CORNER':
                 # col_attrib = [tuple(uv_attr.color) for uv_attr in process_obj_ev.data.attributes[attrib_name].data]
@@ -981,7 +881,7 @@ def MeshToJSONData(process_obj):
                 print("Attribute " + attrib_name + " must have FACECORNER domain!!!")
 
         # Setup bengine_material Value
-        elif attrib_name == BENGINE_MATERIAL:
+        elif attrib_name == BESettings.BENGINE_MATERIAL:
             if process_obj.data.attributes[attrib_name].domain == 'FACE':
                 np_mat_attrib = np.zeros(len(process_obj.data.attributes[attrib_name].data), dtype=np.uint8)
                 process_obj.data.attributes[attrib_name].data.foreach_get('value', np_mat_attrib)
