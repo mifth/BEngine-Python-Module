@@ -8,6 +8,7 @@ from . import BESettings, BERunNodes
 
 import json
 import pickle
+import traceback
 
 # MAX_BYTES = 4096
 # host = socket.gethostname() # get name of local machine
@@ -40,17 +41,29 @@ def handle_client(client_socket, addr):
 
                 be_base_stuff = BEUtils.BaseStuff(js_base_stuff["BaseValues"])
 
-                process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_paths, be_base_stuff)
+                # Load Nodes
+                try:
+                    process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_paths, be_base_stuff)
+                except Exception as e:
+                    print("There was a Problem During LoadNodesTreeFromJSON.")
+                    print(traceback.format_exc())
 
                 if be_base_stuff.run_type == BESettings.RunNodesType.RunNodes:
-                    js_inputs = js_base_stuff["BEngineInputs"]
-                    js_output_data = BERunNodes.RunNodes(context, be_paths, js_inputs, node_tree,
-                                                         process_gn_obj, geom_mod, be_base_stuff)
+
+                    # Get Data
+                    try:
+                        js_inputs = js_base_stuff["BEngineInputs"]
+                        js_output_data = BERunNodes.RunNodes(context, be_paths, js_inputs, node_tree,
+                                                             process_gn_obj, geom_mod, be_base_stuff)
+
+                    except Exception as e:
+                        print("There was a Problem During RunNodes.")
+                        print(traceback.format_exc())
+
+                        js_output_data = {}
 
                     # Send
-                    if js_output_data:
-                        # SendAll(client_socket, str.encode(json.dumps(js_output_data)))
-                        client_socket.sendall(str.encode(json.dumps(js_output_data)))
+                    client_socket.sendall(str.encode(json.dumps(js_output_data)))
 
                 elif be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
                     BERunNodes.SaveBlenderInputs(be_base_stuff, node_tree)
