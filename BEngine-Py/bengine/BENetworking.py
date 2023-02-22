@@ -19,8 +19,6 @@ SERVER_SOCKET = None
 
 
 def handle_client(client_socket, addr):
-    print('handle client')
-
     # global SERVER_SOCKET
 
     be_paths = BESettings.START_PARAMS
@@ -49,24 +47,31 @@ def handle_client(client_socket, addr):
                     print(traceback.format_exc())
 
                 if be_base_stuff.run_type == BESettings.RunNodesType.RunNodes:
+                    js_output_data = {}
 
-                    # Get Data
-                    try:
-                        js_inputs = js_base_stuff["BEngineInputs"]
-                        js_output_data = BERunNodes.RunNodes(context, be_paths, js_inputs, node_tree,
-                                                             process_gn_obj, geom_mod, be_base_stuff)
+                    if node_tree:
+                        # Get Data
+                        try:
+                            js_inputs = js_base_stuff["BEngineInputs"]
+                            js_output_data = BERunNodes.RunNodes(context, be_paths, js_inputs, node_tree,
+                                                                process_gn_obj, geom_mod, be_base_stuff)
 
-                    except Exception as e:
-                        print("There was a Problem During RunNodes.")
-                        print(traceback.format_exc())
+                        except Exception as e:
+                            print("There was a Problem During RunNodes.")
+                            print(traceback.format_exc())
 
-                        js_output_data = {}
+                            js_output_data = {}
+                    else:
+                        print("NodeTree is None. Probably the NodeTree is Wrong.")
 
                     # Send
                     client_socket.sendall(str.encode(json.dumps(js_output_data)))
 
                 elif be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
-                    BERunNodes.SaveBlenderInputs(be_base_stuff, node_tree)
+                    if node_tree:
+                        BERunNodes.SaveBlenderInputs(be_base_stuff, node_tree)
+                    else:
+                        print("NodeTree is None. Probably the NodeTree is Wrong.")
 
 
             AddBackServer(0.01)
