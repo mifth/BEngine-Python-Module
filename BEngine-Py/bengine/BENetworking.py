@@ -67,6 +67,7 @@ def handle_client(client_socket, addr):
                     # Send
                     client_socket.sendall(str.encode(json.dumps(js_output_data)))
 
+                # Save Blender Inputs
                 elif be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
                     if node_tree:
                         BERunNodes.SaveBlenderInputs(be_base_stuff, node_tree)
