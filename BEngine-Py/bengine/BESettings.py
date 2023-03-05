@@ -19,13 +19,13 @@ OUTPUT_JSON_NAME = "BlenderOutputs.json"
 
 
 class RunBlenderType(Enum):
-    RunBlender = 1
-    RunNetwork = 2
+    RunBlender = 0
+    RunNetwork = 1
 
 
 class RunNodesType(Enum):
-    UpdateNodes = 1
-    RunNodes = 2
+    UpdateNodes = 0
+    RunNodes = 1
 
 
 class SVConstants:
@@ -47,44 +47,45 @@ class SVConstants:
 
 class StartParams:
 
-    def __init__(self):
-        self.be_tmp_folder = None
-        self.project_path = None
-        self.project_path_2 = None
+    def __init__(self, get_from_args=False):
+        self.be_tmp_folder: str = None
+        # self.project_path = None
+        # self.project_path_2 = None
 
-        self.run_blender_Type = None
-        self.host = None
-        self.port = None
-        self.buffer_size = None
+        self.run_blender_Type: RunBlenderType = None
+        self.host: str = None
+        self.port: int = None
+        self.buffer_size: int = None
 
-        args = sys.argv
+        if get_from_args:
+            args = sys.argv
 
-        for arg in args:
-            if arg.startswith('BE_TMP_FOLDER='):
-                self.be_tmp_folder = arg.replace('BE_TMP_FOLDER=', '')
-            elif arg.startswith('PROJECT_PATH='):
-                self.project_path = arg.replace('PROJECT_PATH=', '')
-            elif arg.startswith('PROJECT_PATH_2='):
-                self.project_path_2 = arg.replace('PROJECT_PATH_2=', '')
+            for arg in args:
+                if arg.startswith('BE_TMP_FOLDER='):
+                    self.be_tmp_folder = arg.replace('BE_TMP_FOLDER=', '')
+                # elif arg.startswith('PROJECT_PATH='):
+                #     self.project_path = arg.replace('PROJECT_PATH=', '')
+                # elif arg.startswith('PROJECT_PATH_2='):
+                #     self.project_path_2 = arg.replace('PROJECT_PATH_2=', '')
 
-        # Networking
-            elif arg.startswith('RunBlenderType='):
-                self.run_blender_type = arg.replace('RunBlenderType=', '')
+                # Networking
+                elif arg.startswith('RunBlenderType='):
+                    arg_run_blender_type = arg.replace('RunBlenderType=', '')
 
-                if RunBlenderType.RunBlender._name_ == self.run_blender_type:
-                    self.run_blender_type = RunBlenderType.RunBlender
-                else:
-                    self.run_blender_type = RunBlenderType.RunNetwork
+                    if arg_run_blender_type == RunBlenderType.RunBlender.name:
+                        self.run_blender_type = RunBlenderType.RunBlender
+                    else:
+                        self.run_blender_type = RunBlenderType.RunNetwork
 
-            elif arg.startswith('Host='):
-                self.host = arg.replace('Host=', '')
-            elif arg.startswith('Port='):
-                self.port = int(arg.replace('Port=', ''))
-            elif arg.startswith('MaxPackageBytes='):
-                self.buffer_size = int(arg.replace('MaxPackageBytes=', ''))
+                elif arg.startswith('Host='):
+                    self.host = arg.replace('Host=', '')
+                elif arg.startswith('Port='):
+                    self.port = int(arg.replace('Port=', ''))
+                elif arg.startswith('MaxPackageBytes='):
+                    self.buffer_size = int(arg.replace('MaxPackageBytes=', ''))
 
 
-START_PARAMS = StartParams()
+START_PARAMS = StartParams(True)
 
 
 class BaseStuff:
@@ -120,11 +121,5 @@ class BaseStuff:
             self.run_type = RunNodesType.RunNodes
         else:
             self.run_type = RunNodesType.UpdateNodes
-
-        # # Networking
-        # self.RunBlenderType = be_paths["RunBlenderType"]
-        # self.Host = be_paths["Host"]
-        # self.Port = be_paths["Port"]
-        # self.MaxPackageBytes = be_paths["MaxPackageBytes"]
 
 

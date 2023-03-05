@@ -316,7 +316,7 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                             input[1]['BEVector'][2] = js_prop["Value"][2]
 
                     case "IMAGE":
-                        new_img = bpy.data.images.load(be_paths.project_path_2 + js_prop["Value"])
+                        new_img = bpy.data.images.load(js_prop["Value"])
 
                         if is_GN:
                             GN_mod[input[1].identifier] = new_img
