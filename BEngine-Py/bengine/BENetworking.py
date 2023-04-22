@@ -1,6 +1,7 @@
-import socket
-#import threading
 import bpy
+
+import socket
+import threading
 import select
 
 from .Utils import BEUtils
@@ -16,10 +17,15 @@ import traceback
 # port = 55555
 
 SERVER_SOCKET = None
+client_socket_glob = None
+addr_glob = None
 
+def HandleClient():
+    global client_socket_glob
+    global addr_glob
 
-def handle_client(client_socket, addr):
-    # global SERVER_SOCKET
+    client_socket = client_socket_glob
+    addr = addr_glob
 
     be_paths = BESettings.START_PARAMS
 
@@ -75,7 +81,7 @@ def handle_client(client_socket, addr):
                         print("NodeTree is None. Probably the NodeTree is Wrong.")
 
 
-            AddBackServer(0.01)
+            # AddBackgroundServer(0.01)
 
             client_socket.close()
 
@@ -84,21 +90,6 @@ def handle_client(client_socket, addr):
             # client_sockets.remove(client_socket)
 
             break
-
-
-def background_server():
-    if select.select([SERVER_SOCKET], [], [], 0.01)[0]:
-        client_socket, addr = SERVER_SOCKET.accept()
-        print("Got a connection from %s" % str(addr))
-#        client_sockets.append(client_socket)
-
-#        client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
-#        client_thread.start()
-        handle_client(client_socket, addr)
-
-#    bpy.app.timers.register(1.0)
-
-    return 0.1
 
 
 def RunServer():
@@ -112,15 +103,36 @@ def RunServer():
 
     #client_sockets = []
 
-    AddBackServer(0)
+    AddBackgroundServer(0)
 
     print('Server has started!')
 
 
-def AddBackServer(first_interval_int):
-    if not bpy.app.timers.is_registered(background_server):
-        bpy.app.timers.register(background_server, first_interval = first_interval_int)
-        # bpy.app.timers.register(background_server)
+def BackgroundServer():
+    while True:
+        if select.select([SERVER_SOCKET], [], [], 0.01)[0]:
+
+            global client_socket_glob
+            global addr_glob
+
+            client_socket, addr = SERVER_SOCKET.accept()
+            print("Got a connection from %s" % str(addr))
+
+            client_socket_glob = client_socket
+            addr_glob = addr_glob
+
+            # HandleClient(client_socket, addr)
+            bpy.app.timers.register(HandleClient, first_interval=0)
+
+
+def AddBackgroundServer(first_interval_int):
+    # if not bpy.app.timers.is_registered(BackgroundServer):
+    #     bpy.app.timers.register(BackgroundServer, first_interval = first_interval_int)
+    #     # bpy.app.timers.register(BackgroundServer)
+
+    client_thread = threading.Thread(target=BackgroundServer, args=())
+    client_thread.daemon = True
+    client_thread.start()
 
 
 # def SendAll(sock, msg):
