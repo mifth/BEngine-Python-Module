@@ -10,10 +10,10 @@ SCRIPT_DIR = PACKAGE_PARENT
 sys.path.append(str(SCRIPT_DIR))
 
 
-from bengine import BERunNodes, BENetworking, BESettings
+from bengine import BERunNodes, BENetworking, BESettings, BEStartParams
 
 
-if BESettings.START_PARAMS.run_blender_type == BESettings.RunBlenderType.RunNetwork:
+if BEStartParams.StartParams().run_blender_type == BEStartParams.RunBlenderType.RunNetwork:
     BENetworking.RunServer()
 else:
     try:

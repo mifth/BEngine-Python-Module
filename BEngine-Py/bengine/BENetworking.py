@@ -5,10 +5,10 @@ import threading
 import select
 
 from .Utils import BEUtils
-from . import BESettings, BERunNodes
+from . import BESettings, BERunNodes, BENetworkUtils
+from .BEStartParams import StartParams
 
 import json
-import pickle
 import traceback
 
 # MAX_BYTES = 4096
@@ -27,7 +27,7 @@ def HandleClient():
     client_socket = client_socket_glob
     addr = addr_glob
 
-    be_paths = BESettings.START_PARAMS
+    start_params = StartParams()
 
     while True:
         if select.select([client_socket], [], [], 0.01)[0]:
@@ -39,7 +39,7 @@ def HandleClient():
             with context.temp_override(window=window):
 
                 # Receive
-                js_base_stuff_bytes = RecvAll(client_socket, be_paths.buffer_size)
+                js_base_stuff_bytes = BENetworkUtils.RecvAll(client_socket, start_params.buffer_size)
                 # js_base_stuff = js_base_stuff_bytes.decode()
                 js_base_stuff = json.loads(js_base_stuff_bytes)
 
@@ -47,7 +47,7 @@ def HandleClient():
 
                 # Load Nodes
                 try:
-                    process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_paths, be_base_stuff)
+                    process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_base_stuff)
                 except Exception as e:
                     print("There was a Problem During LoadNodesTreeFromJSON.")
                     print(traceback.format_exc())
@@ -59,7 +59,7 @@ def HandleClient():
                         # Get Data
                         try:
                             js_inputs = js_base_stuff["BEngineInputs"]
-                            js_output_data = BERunNodes.RunNodes(context, be_paths, js_inputs, node_tree,
+                            js_output_data = BERunNodes.RunNodes(context, js_inputs, node_tree,
                                                                 process_gn_obj, geom_mod, be_base_stuff)
 
                         except Exception as e:
@@ -80,13 +80,9 @@ def HandleClient():
                     else:
                         print("NodeTree is None. Probably the NodeTree is Wrong.")
 
-
-            # AddBackgroundServer(0.01)
+            print("Closing connection with %s" % str(addr))
 
             client_socket.close()
-
-            print("Closing connection with %s" % str(addr))
-            # client_socket.close()
             # client_sockets.remove(client_socket)
 
             break
@@ -95,10 +91,12 @@ def HandleClient():
 def RunServer():
     global SERVER_SOCKET
 
+    start_params = StartParams()
+
     SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     SERVER_SOCKET.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-    SERVER_SOCKET.bind((BESettings.START_PARAMS.host, BESettings.START_PARAMS.port))
+    SERVER_SOCKET.bind((start_params.host, start_params.port))
     SERVER_SOCKET.listen(1)
 
     #client_sockets = []
@@ -119,9 +117,9 @@ def BackgroundServer():
             print("Got a connection from %s" % str(addr))
 
             client_socket_glob = client_socket
-            addr_glob = addr_glob
+            addr_glob = addr
 
-            # HandleClient(client_socket, addr)
+            # HandleClient()
             bpy.app.timers.register(HandleClient, first_interval=0)
 
 
@@ -145,21 +143,3 @@ def AddBackgroundServer(first_interval_int):
 #     #         raise RuntimeError("socket connection broken")
 #     #     totalsent = totalsent + sent
 #     sock.sendall(msg)
-
-
-def RecvAll(sock, buff_size):
-    data = b''
-
-    while True:
-        part = sock.recv(buff_size)
-
-        if not part:
-            break
-
-        data += part
-
-        if len(part) < buff_size:
-            # either 0 or end of data
-            break
-
-    return data

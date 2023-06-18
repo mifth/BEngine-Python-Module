@@ -14,7 +14,8 @@ import bpy
 #     import BEUtils
 
 from .Utils import BEUtils
-from . import BENetworking, BESettings
+from . import BESettings
+from .BEStartParams import StartParams
 
 
 def Run():
@@ -24,15 +25,15 @@ def Run():
     bpy.ops.wm.read_homefile(use_empty=True)
     # bpy.ops.wm.read_factory_settings(use_empty=True)
 
-    be_paths = BESettings.START_PARAMS
+    start_params = StartParams()
 
     # Base Stuff
-    beBaseStuff_path = be_paths.be_tmp_folder + "BEngineBaseFromEngine.json"
+    beBaseStuff_path = start_params.be_tmp_folder + "BEngineBaseFromEngine.json"
     js_base_stuff = BEUtils.LoadJSON(beBaseStuff_path)
 
     be_base_stuff = BEUtils.BaseStuff(js_base_stuff)
 
-    process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_paths, be_base_stuff)
+    process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_base_stuff)
 
     if node_tree:
 
@@ -40,15 +41,15 @@ def Run():
             SaveBlenderInputs(be_base_stuff, node_tree)
         else:
             # GET BLENDER INPUTS
-            beInputs_path = be_paths.be_tmp_folder + "BEngineInputs.json"
+            beInputs_path = start_params.be_tmp_folder + "BEngineInputs.json"
             js_input_data = BEUtils.LoadJSON(beInputs_path)
 
-            js_output_data = RunNodes(context, be_paths, js_input_data, node_tree,
+            js_output_data = RunNodes(context, js_input_data, node_tree,
                                       process_gn_obj, geom_mod, be_base_stuff)
             
             # Save Outputs
             if js_output_data:
-                gn_js_path = be_paths.be_tmp_folder + BESettings.OUTPUT_JSON_NAME
+                gn_js_path = start_params.be_tmp_folder + BESettings.OUTPUT_JSON_NAME
                 BEUtils.SaveJSON(gn_js_path, js_output_data)
 
         print("!PYTHON DONE!")  # PYTHON IS DONE
@@ -80,7 +81,7 @@ def SaveBlenderInputs(be_base_stuff: BEUtils.BaseStuff, node_tree):
     BEUtils.SaveJSON(gn_js_path, js_output_data)
 
 
-def RunNodes(context, be_proj_paths, js_input_data, node_tree, process_gn_obj, geom_mod, be_base_stuff):
+def RunNodes(context, js_input_data, node_tree, process_gn_obj, geom_mod, be_base_stuff):
     if js_input_data:
         # If GN
         if node_tree.bl_idname == BESettings.TYPE_GN and process_gn_obj:
@@ -91,7 +92,7 @@ def RunNodes(context, be_proj_paths, js_input_data, node_tree, process_gn_obj, g
 
             # Setup inputs
             BEUtils.SetupInputsFromJSON(context, node_tree, geom_mod,
-                                        js_input_data, be_proj_paths, be_base_stuff.be_type)
+                                        js_input_data, be_base_stuff.be_type)
             # geom_mod.show_viewport = True
 
             # Set the GN Object Active and Selected
@@ -101,7 +102,7 @@ def RunNodes(context, be_proj_paths, js_input_data, node_tree, process_gn_obj, g
 
             process_gn_obj.data.update()
 
-            js_output_data = BEUtils.SaveBlenderOutputs(context, [process_gn_obj], be_proj_paths, be_base_stuff.be_type, True)
+            js_output_data = BEUtils.SaveBlenderOutputs(context, [process_gn_obj], be_base_stuff.be_type, True)
             return js_output_data
 
         # If SV
@@ -110,16 +111,15 @@ def RunNodes(context, be_proj_paths, js_input_data, node_tree, process_gn_obj, g
 
             # Setup inputs
             BEUtils.SetupInputsFromJSON(context, node_tree, None,
-                                        js_input_data, be_proj_paths, be_base_stuff.be_type)
+                                        js_input_data, be_base_stuff.be_type)
 
             # Update All Nodes
             # node_tree.update()
             context.view_layer.update()
             node_tree.process_ani(True, False)
 
-
             js_output_data = BEUtils.SaveBlenderOutputs(context, BEUtils.GetSVOutputObjects(node_tree), 
-                                        be_proj_paths, be_base_stuff.be_type, False)
+                                                        be_base_stuff.be_type, False)
             return js_output_data
 
         else:

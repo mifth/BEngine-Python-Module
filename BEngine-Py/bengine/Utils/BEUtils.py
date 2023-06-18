@@ -12,7 +12,8 @@ from mathutils import Color, Vector, Euler
 import bmesh
 
 from .. import BESettings
-from ..BESettings import BaseStuff, StartParams
+from ..BESettings import BaseStuff, EngineType
+# from ..BEStartParams import StartParams
 
 
 def LoadJSON(bengineInputs_path: str):
@@ -209,7 +210,7 @@ def GetGNInputsData(node_group):
     return gn_inputs_data
 
 
-def LoadNodesTreeFromJSON(context, be_paths: StartParams, be_base_stuff: BaseStuff):
+def LoadNodesTreeFromJSON(context, be_base_stuff: BaseStuff):
 
     bpy.ops.wm.link(filepath=be_base_stuff.filepath, filename=be_base_stuff.filename,
                     directory=be_base_stuff.directory, link=False)
@@ -246,7 +247,7 @@ def LoadNodesTreeFromJSON(context, be_paths: StartParams, be_base_stuff: BaseStu
 
 
 def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
-                        be_paths: StartParams, engine_type: str):
+                        engine_type: EngineType):
 
     js_inputs = js_input_data["BEngineInputs"]
 
@@ -415,7 +416,7 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
 
 
 def ParseObjectFromJSON(context, js_obj_val, js_input_data, instanced_meshes,
-                        engine_type: str, isCollection: bool,
+                        engine_type: EngineType, isCollection: bool,
                         convert_to_meshes=False):
     has_mesh = False
 
@@ -495,7 +496,7 @@ def ParseObjectFromJSON(context, js_obj_val, js_input_data, instanced_meshes,
     return be_objs, has_mesh
 
 
-def MeshFromJSON(js_mesh, engine_type: str):
+def MeshFromJSON(js_mesh, engine_type: EngineType):
 
     if "Verts" in js_mesh and js_mesh["Verts"]:
         verts_len = len(js_mesh["Verts"])
@@ -561,7 +562,7 @@ def MeshFromJSON(js_mesh, engine_type: str):
     return new_mesh
 
 
-def CurvesFromJSON(js_obj, engine_type: str, import_as_curve: bool):
+def CurvesFromJSON(js_obj, engine_type: EngineType, import_as_curve: bool):
 
     js_curv = js_obj["Curves"]
     js_curve_elems = js_curv["CurveElements"]
@@ -618,7 +619,7 @@ def CurvesFromJSON(js_obj, engine_type: str, import_as_curve: bool):
     return be_curv_data
 
 
-def TerrainMeshFromJSON(js_obj, engine_type: str):
+def TerrainMeshFromJSON(js_obj, engine_type: EngineType):
     js_terr = js_obj["Terrain"]
 
     if "Verts" in js_terr and js_terr["Verts"]:
@@ -689,7 +690,7 @@ def ObjectFromJSON(js_obj, mesh, engine_type, do_transform: bool):
     return be_mesh_obj
 
 
-def SetTransformFromJSON(js_obj, be_obj, engine_type: str):
+def SetTransformFromJSON(js_obj, be_obj, engine_type: EngineType):
     be_obj.location = js_obj["Pos"]
     SetRotationFromJSON(be_obj, js_obj["Rot"], engine_type)
     be_obj.scale = js_obj["Scale"]
@@ -729,7 +730,7 @@ def RecordObjectOutputToJSON(inst_dict, the_object, is_instance: bool):
                 cur_inst_data["Mesh"] = MeshToJSONData(true_obj)
 
 
-def SaveBlenderOutputs(context, process_objs: list, be_paths: StartParams, engine_type: str, is_GN: bool):
+def SaveBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_GN: bool):
 
     depsgraph = context.evaluated_depsgraph_get()
 
@@ -907,8 +908,8 @@ def GetMeshNormalsNumpy(process_obj):
     return np_normals
 
 
-def SetRotationFromJSON(obj, js_euler, engine_type: str):
-    if engine_type == "Unity":
+def SetRotationFromJSON(obj, js_euler, engine_type: EngineType):
+    if engine_type == EngineType.Unity:
         # Set Rotation
         rot_YXZ = Euler(js_euler, 'YXZ')
         rot_mat = rot_YXZ.to_matrix()

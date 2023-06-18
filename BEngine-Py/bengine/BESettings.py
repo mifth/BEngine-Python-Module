@@ -1,5 +1,4 @@
 from enum import Enum
-import sys
 import os
 
 
@@ -18,6 +17,15 @@ TYPE_SV_SCRIPT = "SvScriptNodeLite"
 OUTPUT_JSON_NAME = "BlenderOutputs.json"
 
 
+# class BEProperty(Enum):
+#     pass
+
+
+class EngineType(Enum):
+    Unity = 0
+    Unreal = 1
+
+
 class RunBlenderType(Enum):
     RunBlender = 0
     RunNetwork = 1
@@ -28,6 +36,7 @@ class RunNodesType(Enum):
     RunNodes = 1
 
 
+# Sverchok Constants
 class SVConstants:
     SV_INPUT_BOOL = "BEBoolean.py"
     SV_INPUT_COLL = "BECollection.py"
@@ -45,57 +54,22 @@ class SVConstants:
     SV_OUTPUT_OBJ = "BEObjectsOutput.py"
 
 
-class StartParams:
-
-    def __init__(self, get_from_args=False):
-        self.be_tmp_folder: str = None
-        # self.project_path = None
-        # self.project_path_2 = None
-
-        self.run_blender_Type: RunBlenderType = None
-        self.host: str = None
-        self.port: int = None
-        self.buffer_size: int = None
-
-        if get_from_args:
-            args = sys.argv
-
-            for arg in args:
-                if arg.startswith('BE_TMP_FOLDER='):
-                    self.be_tmp_folder = arg.replace('BE_TMP_FOLDER=', '')
-                # elif arg.startswith('PROJECT_PATH='):
-                #     self.project_path = arg.replace('PROJECT_PATH=', '')
-                # elif arg.startswith('PROJECT_PATH_2='):
-                #     self.project_path_2 = arg.replace('PROJECT_PATH_2=', '')
-
-                # Networking
-                elif arg.startswith('RunBlenderType='):
-                    arg_run_blender_type = arg.replace('RunBlenderType=', '')
-
-                    if arg_run_blender_type == RunBlenderType.RunBlender.name:
-                        self.run_blender_type = RunBlenderType.RunBlender
-                    else:
-                        self.run_blender_type = RunBlenderType.RunNetwork
-
-                elif arg.startswith('Host='):
-                    self.host = arg.replace('Host=', '')
-                elif arg.startswith('Port='):
-                    self.port = int(arg.replace('Port=', ''))
-                elif arg.startswith('MaxPackageBytes='):
-                    self.buffer_size = int(arg.replace('MaxPackageBytes=', ''))
-
-
-START_PARAMS = StartParams(True)
-
-
 class BaseStuff:
+    section = "/NodeTree/"
+    blendfile = ""
+    blendfolder = ""
+    node_sys_name = ""
+
+    blendfile_basename = ""
+    blendfile_name = ""
+
+    filepath = ""
+    directory = ""
+    filename = ""
+
+    be_type = None
 
     def __init__(self, be_paths: dict):
-        self.section = "/NodeTree/"
-        self.blendfile = ""
-        self.blendfolder = ""
-        self.node_sys_name = ""
-
         self.blendfile = be_paths["BlendFile"]
 
         self.blendfolder = be_paths["BlendFolder"]
@@ -113,7 +87,7 @@ class BaseStuff:
         self.directory = self.blendfile + self.section
         self.filename = self.node_sys_name
 
-        self.be_type = be_paths["BEngineType"]
+        self.be_type = EngineType[be_paths["BEngineType"]]
 
         #  Run Nodes Type
         self.run_type = be_paths["RunNodesType"]
