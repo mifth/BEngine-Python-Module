@@ -73,10 +73,18 @@ def HandleClient():
                     # Send
                     client_socket.sendall(str.encode(json.dumps(js_output_data)))
 
-                # Save Blender Inputs
+                # Save/Send Blender Inputs
                 elif be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
                     if node_tree:
-                        BERunNodes.SaveBlenderInputs(be_base_stuff, node_tree)
+                        if be_base_stuff.be_type == BESettings.EngineType.Unreal:
+                            inputs_to_send = BERunNodes.MakeInputsJS(node_tree)
+                            inputs_to_send = json.dumps(inputs_to_send)
+                            client_socket.sendall(str.encode(inputs_to_send))
+
+                            print("Inputs are Sent!")
+
+                        else:
+                            BERunNodes.SaveBlenderInputs(be_base_stuff, node_tree)
                     else:
                         print("NodeTree is None. Probably the NodeTree is Wrong.")
 

@@ -61,7 +61,7 @@ def Run():
         return False
 
 
-def SaveBlenderInputs(be_base_stuff: BEUtils.BaseStuff, node_tree):
+def MakeInputsJS(node_tree):
     # ORIGINAL STUFF
     # Get GN Data
     js_output_data = {}
@@ -72,6 +72,12 @@ def SaveBlenderInputs(be_base_stuff: BEUtils.BaseStuff, node_tree):
         gn_inputs_data = BEUtils.GetGNInputsData(node_tree)
 
     js_output_data['Inputs'] = gn_inputs_data
+
+    return js_output_data
+
+
+def SaveBlenderInputs(be_base_stuff: BEUtils.BaseStuff, node_tree):
+    js_output_data = MakeInputsJS(node_tree)
 
     # If No JSON File
     gn_js_path = be_base_stuff.blendfolder + be_base_stuff.blendfile_name + '_' + be_base_stuff.node_sys_name + '.json'
