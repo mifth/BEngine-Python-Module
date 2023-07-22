@@ -19,46 +19,50 @@ from .BEStartParams import StartParams
 
 
 def Run():
-    context = bpy.context
 
     # BEUtils.ClearScene()
     bpy.ops.wm.read_homefile(use_empty=True)
     # bpy.ops.wm.read_factory_settings(use_empty=True)
 
-    start_params = StartParams()
+    window = bpy.context.window_manager.windows[0]
+    with bpy.context.temp_override(window=window):
 
-    # Base Stuff
-    beBaseStuff_path = start_params.be_tmp_folder + "BEngineBaseFromEngine.json"
-    js_base_stuff = BEUtils.LoadJSON(beBaseStuff_path)
+        context = bpy.context
 
-    be_base_stuff = BEUtils.BaseStuff(js_base_stuff)
+        start_params = StartParams()
 
-    process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_base_stuff)
+        # Base Stuff
+        beBaseStuff_path = start_params.be_tmp_folder + "BEngineBaseFromEngine.json"
+        js_base_stuff = BEUtils.LoadJSON(beBaseStuff_path)
 
-    if node_tree:
+        be_base_stuff = BEUtils.BaseStuff(js_base_stuff)
 
-        if be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
-            SaveBlenderInputs(be_base_stuff, node_tree)
+        process_gn_obj, geom_mod, node_tree = BEUtils.LoadNodesTreeFromJSON(context, be_base_stuff)
+
+        if node_tree:
+
+            if be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
+                SaveBlenderInputs(be_base_stuff, node_tree)
+            else:
+                # GET BLENDER INPUTS
+                beInputs_path = start_params.be_tmp_folder + "BEngineInputs.json"
+                js_input_data = BEUtils.LoadJSON(beInputs_path)
+
+                js_output_data = RunNodes(context, js_input_data, node_tree,
+                                        process_gn_obj, geom_mod, be_base_stuff)
+                
+                # Save Outputs
+                if js_output_data:
+                    gn_js_path = start_params.be_tmp_folder + BESettings.OUTPUT_JSON_NAME
+                    BEUtils.SaveJSON(gn_js_path, js_output_data)
+
+            print("!PYTHON DONE!")  # PYTHON IS DONE
+
+            return True
+
         else:
-            # GET BLENDER INPUTS
-            beInputs_path = start_params.be_tmp_folder + "BEngineInputs.json"
-            js_input_data = BEUtils.LoadJSON(beInputs_path)
-
-            js_output_data = RunNodes(context, js_input_data, node_tree,
-                                      process_gn_obj, geom_mod, be_base_stuff)
-            
-            # Save Outputs
-            if js_output_data:
-                gn_js_path = start_params.be_tmp_folder + BESettings.OUTPUT_JSON_NAME
-                BEUtils.SaveJSON(gn_js_path, js_output_data)
-
-        print("!PYTHON DONE!")  # PYTHON IS DONE
-
-        return True
-
-    else:
-        print("Nodes were not Loaded! Please check Paths and NodeTree Name!")
-        return False
+            print("Nodes were not Loaded! Please check Paths and NodeTree Name!")
+            return False
 
 
 def MakeInputsJS(node_tree):
@@ -87,18 +91,18 @@ def SaveBlenderInputs(be_base_stuff: BEUtils.BaseStuff, node_tree):
     BEUtils.SaveJSON(gn_js_path, js_output_data)
 
 
-def RunNodes(context, js_input_data, node_tree, process_gn_obj, geom_mod, be_base_stuff):
-    if js_input_data:
+def RunNodes(context, js_inputs, node_tree, process_gn_obj, geom_mod, be_base_stuff):
+    if js_inputs:
         # If GN
         if node_tree.bl_idname == BESettings.TYPE_GN and process_gn_obj:
             # Set Transform
-            process_gn_obj.location = js_input_data["Pos"]
-            BEUtils.SetRotationFromJSON(process_gn_obj, js_input_data["Rot"], be_base_stuff.be_type)
-            process_gn_obj.scale = js_input_data["Scale"]
+            process_gn_obj.location = js_inputs["Pos"]
+            BEUtils.SetRotationFromJSON(process_gn_obj, js_inputs["Rot"], be_base_stuff.be_type)
+            process_gn_obj.scale = js_inputs["Scale"]
 
             # Setup inputs
             BEUtils.SetupInputsFromJSON(context, node_tree, geom_mod,
-                                        js_input_data, be_base_stuff.be_type)
+                                        js_inputs, be_base_stuff.be_type)
             # geom_mod.show_viewport = True
 
             # Set the GN Object Active and Selected
@@ -117,7 +121,7 @@ def RunNodes(context, js_input_data, node_tree, process_gn_obj, geom_mod, be_bas
 
             # Setup inputs
             BEUtils.SetupInputsFromJSON(context, node_tree, None,
-                                        js_input_data, be_base_stuff.be_type)
+                                        js_inputs, be_base_stuff.be_type)
 
             # Update All Nodes
             # node_tree.update()
@@ -132,7 +136,7 @@ def RunNodes(context, js_input_data, node_tree, process_gn_obj, geom_mod, be_bas
             print("Nodes were not Loaded! Please check Paths and NodeTree Name!")
             return None
     else:
-        print("JSON Inputs Object is Empty: ")
+        print("JSON Object is Empty!!!")
         return None
 
     return None

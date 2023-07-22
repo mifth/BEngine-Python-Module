@@ -33,17 +33,17 @@ def HandleClient():
         if select.select([client_socket], [], [], 0.01)[0]:
             bpy.ops.wm.read_homefile(use_empty=True)
 
-            context = bpy.context
+            window = bpy.context.window_manager.windows[0]
+            with bpy.context.temp_override(window=window):
 
-            window = context.window_manager.windows[0]
-            with context.temp_override(window=window):
+                context = bpy.context
 
                 # Receive
-                js_base_stuff_bytes = BENetworkUtils.RecvAll(client_socket, start_params.buffer_size)
+                js_received_bytes = BENetworkUtils.RecvAll(client_socket, start_params.buffer_size)
                 # js_base_stuff = js_base_stuff_bytes.decode()
-                js_base_stuff = json.loads(js_base_stuff_bytes)
+                js_input_data = json.loads(js_received_bytes)
 
-                be_base_stuff = BEUtils.BaseStuff(js_base_stuff["BaseValues"])
+                be_base_stuff = BEUtils.BaseStuff(js_input_data["BaseValues"])
 
                 # Load Nodes
                 try:
@@ -52,14 +52,15 @@ def HandleClient():
                     print("There was a Problem During LoadNodesTreeFromJSON.")
                     print(traceback.format_exc())
 
+                # Run Nodes!
                 if be_base_stuff.run_type == BESettings.RunNodesType.RunNodes:
                     js_output_data = {}
 
                     if node_tree:
                         # Get Data
                         try:
-                            js_inputs = js_base_stuff["BEngineInputs"]
-                            js_output_data = BERunNodes.RunNodes(context, js_inputs, node_tree,
+                            js_from_engine = js_input_data["FromEngineData"]
+                            js_output_data = BERunNodes.RunNodes(context, js_from_engine, node_tree,
                                                                 process_gn_obj, geom_mod, be_base_stuff)
 
                         except Exception as e:
@@ -73,7 +74,7 @@ def HandleClient():
                     # Send
                     client_socket.sendall(str.encode(json.dumps(js_output_data)))
 
-                # Save/Send Blender Inputs
+                # Update Nodes! Save/Send Blender Inputs
                 elif be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
                     if node_tree:
                         if be_base_stuff.be_type == BESettings.EngineType.Unreal:

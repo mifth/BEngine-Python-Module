@@ -249,173 +249,174 @@ def LoadNodesTreeFromJSON(context, be_base_stuff: BaseStuff):
 def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                         engine_type: EngineType):
 
-    js_inputs = js_input_data["BEngineInputs"]
+    if "BEngineInputs" in js_input_data:
+        js_inputs = js_input_data["BEngineInputs"]
 
-    is_GN = node_tree.bl_idname == BESettings.TYPE_GN
+        is_GN = node_tree.bl_idname == BESettings.TYPE_GN
 
-    coll_idx = 0
+        coll_idx = 0
 
-    # GN - Inputs
-    # SV - SVInputNodes
-    if is_GN:
-        input_items = node_tree.inputs.items()
-    else:
-        input_items = GetSVInputNodes(node_tree)
-
-    instanced_meshes = {}
-
-    for input in input_items:
-
+        # GN - Inputs
+        # SV - SVInputNodes
         if is_GN:
-            node_id = input[1].identifier
+            input_items = node_tree.inputs.items()
         else:
-            node_id = input[1].node_id
+            input_items = GetSVInputNodes(node_tree)
 
-        if node_id in js_inputs.keys():
+        instanced_meshes = {}
 
-            # Check if the same type
+        for input in input_items:
+
             if is_GN:
-                is_same_type = (input[1].type == js_inputs[node_id]["Type"])
-
-                if not is_same_type:
-                    print("!Input " + input[1].name + " is not the same type! " + input[1].type + " " + js_inputs[node_id]["Type"])
-                    continue
-
+                node_id = input[1].identifier
             else:
-                is_same_type = (input[0] == js_inputs[node_id]["Type"])
+                node_id = input[1].node_id
 
-                if not is_same_type:
-                    print("!Input " + input[1].name + " is not the same type! " + input[0] + " " + js_inputs[node_id]["Type"])
-                    continue
+            if node_id in js_inputs.keys():
 
-            # Run Main Stuff
-            js_prop = js_inputs[node_id]
+                # Check if the same type
+                if is_GN:
+                    is_same_type = (input[1].type == js_inputs[node_id]["Type"])
 
-            if "Value" in js_prop.keys() and js_prop["Value"] is not None:
+                    if not is_same_type:
+                        print("!Input " + input[1].name + " is not the same type! " + input[1].type + " " + js_inputs[node_id]["Type"])
+                        continue
 
-                match js_prop["Type"]:
-                    case "RGBA":
-                        if is_GN:
-                            GN_mod[input[1].identifier][0] = js_prop["Value"][0]
-                            GN_mod[input[1].identifier][1] = js_prop["Value"][1]
-                            GN_mod[input[1].identifier][2] = js_prop["Value"][2]
-                            GN_mod[input[1].identifier][3] = js_prop["Value"][3]
-                        else:
-                            input[1]['BEColor'][0] = js_prop["Value"][0]
-                            input[1]['BEColor'][1] = js_prop["Value"][1]
-                            input[1]['BEColor'][2] = js_prop["Value"][2]
-                            input[1]['BEColor'][3] = js_prop["Value"][3]
+                else:
+                    is_same_type = (input[0] == js_inputs[node_id]["Type"])
 
-                    case "VECTOR":
-                        if is_GN:
-                            GN_mod[input[1].identifier][0] = js_prop["Value"][0]
-                            GN_mod[input[1].identifier][1] = js_prop["Value"][1]
-                            GN_mod[input[1].identifier][2] = js_prop["Value"][2]
-                        else:
-                            input[1]['BEVector'][0] = js_prop["Value"][0]
-                            input[1]['BEVector'][1] = js_prop["Value"][1]
-                            input[1]['BEVector'][2] = js_prop["Value"][2]
+                    if not is_same_type:
+                        print("!Input " + input[1].name + " is not the same type! " + input[0] + " " + js_inputs[node_id]["Type"])
+                        continue
 
-                    case "IMAGE":
-                        new_img = bpy.data.images.load(js_prop["Value"])
+                # Run Main Stuff
+                js_prop = js_inputs[node_id]
 
-                        if is_GN:
-                            GN_mod[input[1].identifier] = new_img
+                if "Value" in js_prop.keys() and js_prop["Value"] is not None:
 
-                    # case "TEXTURE":
-                    #     pass
+                    match js_prop["Type"]:
+                        case "RGBA":
+                            if is_GN:
+                                GN_mod[input[1].identifier][0] = js_prop["Value"][0]
+                                GN_mod[input[1].identifier][1] = js_prop["Value"][1]
+                                GN_mod[input[1].identifier][2] = js_prop["Value"][2]
+                                GN_mod[input[1].identifier][3] = js_prop["Value"][3]
+                            else:
+                                input[1]['BEColor'][0] = js_prop["Value"][0]
+                                input[1]['BEColor'][1] = js_prop["Value"][1]
+                                input[1]['BEColor'][2] = js_prop["Value"][2]
+                                input[1]['BEColor'][3] = js_prop["Value"][3]
 
-                    case "MATERIAL":
-                        mat = bpy.data.materials.new(name="BEMaterial")
+                        case "VECTOR":
+                            if is_GN:
+                                GN_mod[input[1].identifier][0] = js_prop["Value"][0]
+                                GN_mod[input[1].identifier][1] = js_prop["Value"][1]
+                                GN_mod[input[1].identifier][2] = js_prop["Value"][2]
+                            else:
+                                input[1]['BEVector'][0] = js_prop["Value"][0]
+                                input[1]['BEVector'][1] = js_prop["Value"][1]
+                                input[1]['BEVector'][2] = js_prop["Value"][2]
 
-                        if is_GN:
-                            GN_mod[input[1].identifier] = mat
+                        case "IMAGE":
+                            new_img = bpy.data.images.load(js_prop["Value"])
 
-                    case "OBJECT":
-                        js_obj_val = js_prop["Value"]
+                            if is_GN:
+                                GN_mod[input[1].identifier] = new_img
 
-                        be_objs, has_mesh = ParseObjectFromJSON(context, js_obj_val,
-                                                                js_input_data, instanced_meshes,
-                                                                engine_type, False, True)
+                        # case "TEXTURE":
+                        #     pass
 
-                        # Join Meshes
-                        bpy.ops.object.select_all(action='DESELECT')
+                        case "MATERIAL":
+                            mat = bpy.data.materials.new(name="BEMaterial")
 
-                        be_obj = None
+                            if is_GN:
+                                GN_mod[input[1].identifier] = mat
 
-                        if len(be_objs) > 1:
-                            be_obj = be_objs[0]
+                        case "OBJECT":
+                            js_obj_val = js_prop["Value"]
 
-                            for obj in be_objs:
-                                context.collection.objects.link(obj)
-                                obj.select_set(True)
+                            be_objs, has_mesh = ParseObjectFromJSON(js_obj_val,
+                                                                    js_input_data, instanced_meshes,
+                                                                    engine_type, False, True)
 
-                            context.view_layer.objects.active = be_obj
-                            bpy.ops.object.join()
+                            # Join Meshes
+                            bpy.ops.object.select_all(action='DESELECT')
 
-                        else:
-                            if len(be_objs) == 1:
+                            be_obj = None
+
+                            if len(be_objs) > 1:
                                 be_obj = be_objs[0]
-                                context.collection.objects.link(be_objs[0])
 
-                        if is_GN:
-                            GN_mod[input[1].identifier] = be_obj
-                        else:
-                            input[1]['BEObject'] = be_obj.name
+                                for obj in be_objs:
+                                    context.collection.objects.link(obj)
+                                    obj.select_set(True)
 
-                    case "COLLECTION":
-                        js_coll_val = js_prop["Value"]
+                                context.view_layer.objects.active = be_obj
+                                bpy.ops.object.join()
 
-                        be_coll = bpy.data.collections.new('BEngine_' + str(coll_idx))
-                        context.scene.collection.children.link(be_coll)
+                            else:
+                                if len(be_objs) == 1:
+                                    be_obj = be_objs[0]
+                                    context.collection.objects.link(be_objs[0])
 
-                        be_coll_objs, has_mesh = ParseObjectFromJSON(context, js_coll_val,
-                                                                     js_input_data, instanced_meshes,
-                                                                     engine_type, True, False)
+                            if is_GN:
+                                GN_mod[input[1].identifier] = be_obj
+                            else:
+                                input[1]['BEObject'] = be_obj.name
 
-                        for obj in be_coll_objs:
-                            be_coll.objects.link(obj)
+                        case "COLLECTION":
+                            js_coll_val = js_prop["Value"]
 
-                        if is_GN:
-                            GN_mod[input[1].identifier] = be_coll
-                        else:
-                            input[1]['BECollection'] = be_coll.name
+                            be_coll = bpy.data.collections.new('BEngine_' + str(coll_idx))
+                            context.scene.collection.children.link(be_coll)
 
-                        coll_idx += 1
+                            be_coll_objs, has_mesh = ParseObjectFromJSON(js_coll_val,
+                                                                        js_input_data, instanced_meshes,
+                                                                        engine_type, True, False)
 
-                    case "VALUE":
-                        if is_GN:
-                            GN_mod[input[1].identifier] = float(js_prop["Value"])
-                        else:
-                            input[1]['BEFloat'] = float(js_prop["Value"])
+                            for obj in be_coll_objs:
+                                be_coll.objects.link(obj)
 
-                    case "INT":
-                        if is_GN:
-                            GN_mod[input[1].identifier] = js_prop["Value"]
-                        else:
-                            input[1]['BEInteger'] = js_prop["Value"]
+                            if is_GN:
+                                GN_mod[input[1].identifier] = be_coll
+                            else:
+                                input[1]['BECollection'] = be_coll.name
 
-                    case "STRING":
-                        if is_GN:
-                            GN_mod[input[1].identifier] = js_prop["Value"]
-                        else:
-                            input[1]['BEString'] = js_prop["Value"]
+                            coll_idx += 1
 
-                    case "BOOLEAN":
-                        if is_GN:
-                            GN_mod[input[1].identifier] = js_prop["Value"]
-                        else:
-                            input[1]['BEBoolean'] = js_prop["Value"]
+                        case "VALUE":
+                            if is_GN:
+                                GN_mod[input[1].identifier] = float(js_prop["Value"])
+                            else:
+                                input[1]['BEFloat'] = float(js_prop["Value"])
 
-                    case default:
-                        if is_GN:
-                            GN_mod[input[1].identifier] = js_prop["Value"]
+                        case "INT":
+                            if is_GN:
+                                GN_mod[input[1].identifier] = js_prop["Value"]
+                            else:
+                                input[1]['BEInteger'] = js_prop["Value"]
 
-                # else:
-                #     GN_mod[input[1].identifier] = prop_value
+                        case "STRING":
+                            if is_GN:
+                                GN_mod[input[1].identifier] = js_prop["Value"]
+                            else:
+                                input[1]['BEString'] = js_prop["Value"]
+
+                        case "BOOLEAN":
+                            if is_GN:
+                                GN_mod[input[1].identifier] = js_prop["Value"]
+                            else:
+                                input[1]['BEBoolean'] = js_prop["Value"]
+
+                        case default:
+                            if is_GN:
+                                GN_mod[input[1].identifier] = js_prop["Value"]
+
+                    # else:
+                    #     GN_mod[input[1].identifier] = prop_value
 
 
-def ParseObjectFromJSON(context, js_obj_val, js_input_data, instanced_meshes,
+def ParseObjectFromJSON(js_obj_val, js_input_data, instanced_meshes,
                         engine_type: EngineType, isCollection: bool,
                         convert_to_meshes=False):
     has_mesh = False
