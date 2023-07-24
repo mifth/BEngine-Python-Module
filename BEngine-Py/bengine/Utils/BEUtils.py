@@ -479,14 +479,19 @@ def ParseObjectFromJSON(js_obj_val, js_input_data, instanced_meshes,
                 if i == 0:
                     be_empty_main_obj = None
 
-                    if has_mesh:
-                        empty_mesh_data = bpy.data.meshes.new('BESubMesh')
-                        be_empty_main_obj = bpy.data.objects.new(js_obj["Name"], empty_mesh_data)
-                    else:
-                        empty_curv_data = bpy.data.curves.new(js_obj["Name"], type='CURVE')
-                        empty_curv_data.dimensions = '3D'
+                    if len(js_obj_val) > 1:
+                        if has_mesh:
+                            empty_mesh_data = bpy.data.meshes.new('BESubMesh')
+                            be_empty_main_obj = bpy.data.objects.new(js_obj["Name"], empty_mesh_data)
+                        else:
+                            empty_curv_data = bpy.data.curves.new(js_obj["Name"], type='CURVE')
+                            empty_curv_data.dimensions = '3D'
 
-                        be_empty_main_obj = bpy.data.objects.new(js_obj["Name"], empty_curv_data)
+                            be_empty_main_obj = bpy.data.objects.new(js_obj["Name"], empty_curv_data)
+
+                    else:
+                        #  
+                        be_empty_main_obj = bpy.data.objects.new(js_obj["Name"], None )
 
                     SetTransformFromJSON(js_obj, be_empty_main_obj, engine_type)
 
