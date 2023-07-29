@@ -506,25 +506,28 @@ def MeshFromJSON(js_mesh, engine_type: EngineType):
 
     if "Verts" in js_mesh and js_mesh["Verts"]:
         verts_len = len(js_mesh["Verts"])
+
         polys_len = len(js_mesh["PolyIndices"])
+        if engine_type == EngineType.Unreal:
+            polys_len = int(polys_len / 3)
 
         np_verts = np.asarray(js_mesh["Verts"], dtype=np.float32)
         np_verts.shape = len(np_verts) * 3
 
         np_poly_indices = np.asarray(js_mesh["PolyIndices"], dtype=np.int32)
-        np_poly_indices.shape = polys_len * 3
+        if engine_type != EngineType.Unreal:
+            np_poly_indices.shape = polys_len * 3
 
-        np_normals = np.asarray(js_mesh["Normals"], dtype=np.float32)
-        # np_normals.shape = len(js_mesh["Normals"]) * 3
+        np_normals = None
+        if "Normals" in js_mesh:
+            np_normals = np.asarray(js_mesh["Normals"], dtype=np.float32)
+            # np_normals.shape = len(js_mesh["Normals"]) * 3
 
         # Get UVs
         uvs_dict = {}
 
         if "UVs" in js_mesh.keys():
             for i, (js_uv_key, js_uv) in enumerate(js_mesh["UVs"].items()):
-                # new_uv = np.asarray(js_uv, dtype=np.float32)
-
-                # new_uv = [js_uv[loop.vertex_index] for loop in be_sub_mesh.loops]
                 new_uv = [js_uv[idx] for idx in np_poly_indices]
                 new_uv = np.asarray(new_uv, dtype=np.float32)
                 new_uv.shape = len(new_uv) * 2
@@ -680,7 +683,8 @@ def CreateMesh(verts_len, polys_len, np_verts, np_poly_indices, np_normals):
     mesh.update()
 
     # Normals
-    mesh.normals_split_custom_set_from_vertices(np_normals)
+    if np_normals is not None:
+        mesh.normals_split_custom_set_from_vertices(np_normals)
     # normals2 = [js_mesh["Normals"][loop.vertex_index] for loop in be_sub_mesh.loops]
     # be_sub_mesh.normals_split_custom_set(normals2)
 
@@ -924,4 +928,4 @@ def SetRotationFromJSON(obj, js_euler, engine_type: EngineType):
         obj.rotation_euler = rot_XYZ
 
     else:
-        obj.rotation_euler = js_euler
+        obj.rotation_euler = Euler(js_euler, 'XYZ')
