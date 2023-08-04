@@ -316,6 +316,8 @@ def SetupInputsFromJSON(context, node_tree, GN_mod, js_input_data,
                                                                     engine_type, False, True)
 
                             # Join Meshes
+                            be_obj = None
+                            
                             if len(be_objs) > 1:
                                 bpy.ops.object.select_all(action='DESELECT')
                                 be_obj = be_objs[0]

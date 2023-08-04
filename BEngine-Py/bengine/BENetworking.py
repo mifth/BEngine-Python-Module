@@ -39,8 +39,7 @@ def HandleClient():
                 context = bpy.context
 
                 # Receive
-                js_received_bytes = BENetworkUtils.RecvAll(client_socket, start_params.buffer_size)
-                # js_base_stuff = js_base_stuff_bytes.decode()
+                js_received_bytes = BENetworkUtils.DoReceive(client_socket, start_params.buffer_size)
                 js_input_data = json.loads(js_received_bytes)
 
                 be_base_stuff = BEUtils.BaseStuff(js_input_data["BaseValues"])
@@ -72,7 +71,8 @@ def HandleClient():
                         print("NodeTree is None. Probably the NodeTree is Wrong.")
 
                     # Send
-                    client_socket.sendall(str.encode(json.dumps(js_output_data)))
+                    send_data = str.encode(json.dumps(js_output_data))
+                    BENetworkUtils.DoSend(client_socket, send_data)
 
                 # Update Nodes! Save/Send Blender Inputs
                 elif be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
@@ -80,7 +80,9 @@ def HandleClient():
                         if be_base_stuff.be_type == BESettings.EngineType.Unreal:
                             inputs_to_send = BERunNodes.MakeInputsJS(node_tree)
                             inputs_to_send = json.dumps(inputs_to_send)
-                            client_socket.sendall(str.encode(inputs_to_send))
+                            inputs_to_send = str.encode(inputs_to_send)
+
+                            BENetworkUtils.DoSend(client_socket, inputs_to_send)
 
                             print("Inputs are Sent!")
 
@@ -103,6 +105,7 @@ def RunServer():
     start_params = StartParams()
 
     SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    SERVER_SOCKET.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, start_params.buffer_size)
     SERVER_SOCKET.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     SERVER_SOCKET.bind((start_params.host, start_params.port))
@@ -140,15 +143,3 @@ def AddBackgroundServer(first_interval_int):
     client_thread = threading.Thread(target=BackgroundServer, args=())
     client_thread.daemon = True
     client_thread.start()
-
-
-# def SendAll(sock, msg):
-#     # totalsent = 0
-
-#     # while totalsent < len(msg):
-#     #     sent = sock.send(msg[totalsent:])
-
-#     #     if sent == 0:
-#     #         raise RuntimeError("socket connection broken")
-#     #     totalsent = totalsent + sent
-#     sock.sendall(msg)

@@ -1,6 +1,21 @@
 
 
-def RecvAll(socket, buffer_size: int):
+def DoReceive(client_socket, buffer_size):
+    msg_len_bytes = client_socket.recv(1024)
+    client_socket.sendall(msg_len_bytes)
+    js_received_bytes = RecvAll(client_socket, buffer_size, int(msg_len_bytes.decode()))
+
+    return js_received_bytes
+
+
+def DoSend(client_socket, bytes_data):
+    client_socket.sendall(str(len(bytes_data)).encode())
+    client_socket.recv(1024)
+    client_socket.sendall(bytes_data)
+
+
+# Receive Big Data
+def RecvAll(socket, buffer_size: int, msg_length: int):
     data = b''
 
     while True:
@@ -11,8 +26,7 @@ def RecvAll(socket, buffer_size: int):
 
         data += part
 
-        if len(part) < buffer_size:
-            # either 0 or end of data
+        if len(data) >= msg_length:
             break
 
     return data
