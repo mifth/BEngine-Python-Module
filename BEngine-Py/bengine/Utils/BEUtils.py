@@ -493,89 +493,107 @@ def SetTransformFromJSON(js_obj, be_obj, engine_type: EngineType):
     be_obj.scale = js_obj["Scale"]
 
 
-def RecordObjectOutputToJSON(inst_dict, the_object, is_instance: bool):
+def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
+                             js_meshes: list, meshes_tmp_list: list, meshes_tmp_set: set):
 
     if is_instance:
-        the_mesh = the_object.object.data
+        mesh = the_object.object.data
         obj_type = the_object.object.type
         true_obj = the_object.object
     else:
-        the_mesh = the_object.data
+        mesh = the_object.data
         obj_type = the_object.type
         true_obj = the_object
 
-    if the_mesh not in inst_dict.keys():
-        inst_dict[the_mesh] = {}
-        inst_dict[the_mesh]["Transforms"] = []
+    # Add Default Keys
+    if mesh not in objects_sets_dict.keys():
+        objects_sets_dict[mesh] = {}
+        objects_sets_dict[mesh]["Transforms"] = []
 
-    cur_inst_data = inst_dict[the_mesh]
+    js_object_data = objects_sets_dict[mesh]
 
     # Setup Transforms
     inst_pos, inst_rot, inst_scale = the_object.matrix_world.decompose()
+    js_object_data["Transforms"].append((tuple(inst_pos), tuple(inst_rot.to_euler('XYZ')), tuple(inst_scale)))
 
-    cur_inst_data["Transforms"].append((tuple(inst_pos), tuple(inst_rot.to_euler('XYZ')), tuple(inst_scale)))
-
-    # Setup bengine_instance Value and Mesh
+    # Get Mesh or BENGINE_INSTANCE
     if obj_type == "MESH":
-        if BESettings.BENGINE_INSTANCE in the_mesh.attributes.keys():
-            if BESettings.BENGINE_INSTANCE not in cur_inst_data.keys():
-                if len(the_mesh.attributes[BESettings.BENGINE_INSTANCE].data) > 0:
-                    cur_inst_data["Bengine_Instance"] = the_mesh.attributes[BESettings.BENGINE_INSTANCE].data[0].value
-        else:
-            if "Mesh" not in cur_inst_data.keys():
-                # GET INSTANCE MESH
-                cur_inst_data["Mesh"] = BEGeoUtils.MeshToJSONData(true_obj)
+        # Get BENGINE_INSTANCE Value
+        if BESettings.BENGINE_INSTANCE in mesh.attributes.keys():
+            if BESettings.BENGINE_INSTANCE not in js_object_data.keys():
+                if len(mesh.attributes[BESettings.BENGINE_INSTANCE].data) > 0:
+
+                    be_inst_id = mesh.attributes[BESettings.BENGINE_INSTANCE].data[0].value
+
+                    if type(be_inst_id) is int:
+                        js_object_data["Bengine_Instance"] = be_inst_id
+                    else:
+                        print(BESettings.BENGINE_INSTANCE + " Attribute is not Integer!!!")
+
+        # Get Mesh to JSON
+        elif "Mesh" not in js_object_data.keys():
+            if mesh not in meshes_tmp_set:
+                js_mesh = BEGeoUtils.MeshToJSONData(mesh)
+                js_meshes.append(js_mesh)
+
+                js_object_data["Mesh"] = len(meshes_tmp_list)
+
+                meshes_tmp_list.append(mesh)
+                meshes_tmp_set.add(mesh)
+
+            else:
+                js_object_data["Mesh"] = meshes_tmp_list.index(mesh)
 
 
-def SaveBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_GN: bool):
+def GetBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_GN: bool):
 
     depsgraph = context.evaluated_depsgraph_get()
 
     # MAIN Data
     js_output_data = {}  # Output JSON Data
-    inst_dict = {}  # Instances Dictionary
-    meshes = []  # All Meshes
-    
-    # parse_objs = [process_objs]
+    objects_sets_dict = {}  # Instances Dictionary
 
-    ev_objs = []
+    meshes_tmp_list = []
+    meshes_tmp_set = set()
+    js_meshes_list = []  # All Parsed JSON Meshes
 
-    # GET Evaluated Objects
-    for obj in process_objs:
-        if obj.name in depsgraph.objects.keys():
-            ev_objs.append(depsgraph.objects[obj.name])
-        elif obj.name in bpy.data.objects.keys():
-            ev_objs.append(bpy.data.objects[obj.name])
+    process_ev_objs = [depsgraph.objects[obj.name] for obj in process_objs]
+    process_ev_objs_set = set(process_ev_objs)
 
+    # # GET MAIN MESH
+    # if is_GN:
+    #     # GET MAIN MESH (FOR GN ONLY)!!!
+    #     main_mesh_dict = BEGeoUtils.MeshToJSONData(process_objs[0])
 
-    ev_objs_set = set(ev_objs)
+    #     # If the main mesh has Verts/Polygons
+    #     # Only one mesh at the moment
+    #     if len(main_mesh_dict["Verts"]) > 0:
+    #         # meshes.insert(0, main_mesh_dict)
+    #         meshes.append(main_mesh_dict)  # Add mesh to a list
 
-    if is_GN:
-        # GET MAIN MESH (FOR GN ONLY)!!!
-        main_mesh_dict = BEGeoUtils.MeshToJSONData(ev_objs[0])
+    #     if meshes:
+    #         js_output_data["Meshes"] = meshes
+    # else:
 
-        # If the main mesh has Verts/Polygons
-        # Only one mesh at the moment
-        if len(main_mesh_dict["Verts"]) > 0:
-            # meshes.insert(0, main_mesh_dict)
-            meshes.append(main_mesh_dict)  # Add mesh to a list
-
-        if meshes:
-            js_output_data["Meshes"] = meshes
-    else:
-        # GET SVERCHOK OBJECS AND MESHES
-        for obj in ev_objs:
-            RecordObjectOutputToJSON(inst_dict, obj, False)
+    # GET OBJECS AND MESHES
+    for obj in process_ev_objs:
+        RecordObjectOutputToJSON(objects_sets_dict, obj, False,
+                                 js_meshes_list, meshes_tmp_list, meshes_tmp_set)
 
     # GET INSTANCES
     for obj_instance in depsgraph.object_instances:
-        if obj_instance.parent in ev_objs_set and obj_instance.is_instance:
-
-            RecordObjectOutputToJSON(inst_dict, obj_instance, True)
+        if obj_instance.parent in process_ev_objs_set and obj_instance.is_instance:
+            RecordObjectOutputToJSON(objects_sets_dict, obj_instance, True,
+                                     js_meshes_list, meshes_tmp_list, meshes_tmp_set)
 
     # Record Objects/Instances
-    if inst_dict:
-        js_output_data["Instances"] = list(inst_dict.values())
+    if objects_sets_dict:
+        js_output_data["ObjectsSets"] = list(objects_sets_dict.values())
+    else:
+        js_output_data["ObjectsSets"] = []
+
+    # Record Meshes
+    js_output_data["Meshes"] = js_meshes_list
 
     # gn_js_path = be_paths.be_tmp_folder + BESettings.OUTPUT_JSON_NAME
     # SaveJSON(gn_js_path, js_output_data)

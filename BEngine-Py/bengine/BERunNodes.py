@@ -112,7 +112,7 @@ def RunNodes(context, js_inputs, node_tree, process_gn_obj, geom_mod, be_base_st
 
             process_gn_obj.data.update()
 
-            js_output_data = BEUtils.SaveBlenderOutputs(context, [process_gn_obj], be_base_stuff.be_type, True)
+            js_output_data = BEUtils.GetBlenderOutputs(context, [process_gn_obj], be_base_stuff.be_type, True)
             return js_output_data
 
         # If SV
@@ -128,7 +128,7 @@ def RunNodes(context, js_inputs, node_tree, process_gn_obj, geom_mod, be_base_st
             context.view_layer.update()
             node_tree.process_ani(True, False)
 
-            js_output_data = BEUtils.SaveBlenderOutputs(context, BEUtils.GetSVOutputObjects(node_tree), 
+            js_output_data = BEUtils.GetBlenderOutputs(context, BEUtils.GetSVOutputObjects(node_tree), 
                                                         be_base_stuff.be_type, False)
             return js_output_data
 
