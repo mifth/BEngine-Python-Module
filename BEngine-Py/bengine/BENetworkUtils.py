@@ -1,17 +1,30 @@
 
+FIRST_MSG_LEN = 256
+
+
+def DoSend(client_socket, final_msg_bytes, is_pickle: bool):
+    client_socket.sendall(str(len(final_msg_bytes)).encode())  # Send First Message
+    client_socket.recv(FIRST_MSG_LEN)
+
+    client_socket.sendall(str(int(is_pickle)).encode())  # Send Second Message
+    client_socket.recv(FIRST_MSG_LEN)
+
+    client_socket.sendall(final_msg_bytes)  # Send Final Message
+
 
 def DoReceive(client_socket, buffer_size):
-    msg_len_bytes = client_socket.recv(1024)
-    client_socket.sendall(msg_len_bytes)
-    js_received_bytes = RecvAll(client_socket, buffer_size, int(msg_len_bytes.decode()))
+    first_msg_bytes = client_socket.recv(FIRST_MSG_LEN) # Get First Message
+    client_socket.sendall("First Message Received".encode())
 
-    return js_received_bytes
+    second_msg_bytes = client_socket.recv(FIRST_MSG_LEN) # Get First Message
+    client_socket.sendall("Second Message Received".encode())
 
+    final_msg_len = int(first_msg_bytes.decode())
+    is_pickle = bool(int(second_msg_bytes.decode()))
 
-def DoSend(client_socket, bytes_data):
-    client_socket.sendall(str(len(bytes_data)).encode())
-    client_socket.recv(1024)
-    client_socket.sendall(bytes_data)
+    final_msg_bytes = RecvAll(client_socket, buffer_size, final_msg_len)
+
+    return final_msg_bytes, is_pickle
 
 
 # Receive Big Data

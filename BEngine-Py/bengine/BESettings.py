@@ -17,10 +17,6 @@ TYPE_SV_SCRIPT = "SvScriptNodeLite"
 OUTPUT_JSON_NAME = "BlenderOutputs.json"
 
 
-# class BEProperty(Enum):
-#     pass
-
-
 class EngineType(Enum):
     Unity = 0
     Unreal = 1
@@ -67,7 +63,7 @@ class BaseStuff:
     directory = ""
     filename = ""
 
-    be_type = None
+    engine_type: EngineType
 
     def __init__(self, be_paths: dict):
         self.blendfile = be_paths["BlendFile"]
@@ -87,7 +83,7 @@ class BaseStuff:
         self.directory = self.blendfile + self.section
         self.filename = self.node_sys_name
 
-        self.be_type = EngineType[be_paths["BEngineType"]]
+        self.engine_type = EngineType[be_paths["BEngineType"]]
 
         #  Run Nodes Type
         self.run_type = be_paths["RunNodesType"]

@@ -577,6 +577,10 @@ def GetBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_G
 
     # GET OBJECS AND MESHES
     for obj in process_ev_objs:
+        # If GeometryNodes main mesh has no points/polygons
+        if is_GN and len(obj.data.vertices) == 0:
+            continue
+
         RecordObjectOutputToJSON(objects_sets_dict, obj, False,
                                  js_meshes_list, meshes_tmp_list, meshes_tmp_set)
 

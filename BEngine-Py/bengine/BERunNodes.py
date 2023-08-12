@@ -97,12 +97,12 @@ def RunNodes(context, js_inputs, node_tree, process_gn_obj, geom_mod, be_base_st
         if node_tree.bl_idname == BESettings.TYPE_GN and process_gn_obj:
             # Set Transform
             process_gn_obj.location = js_inputs["Pos"]
-            BEUtils.SetRotationFromJSON(process_gn_obj, js_inputs["Rot"], be_base_stuff.be_type)
+            BEUtils.SetRotationFromJSON(process_gn_obj, js_inputs["Rot"], be_base_stuff.engine_type)
             process_gn_obj.scale = js_inputs["Scale"]
 
             # Setup inputs
             BEUtils.SetupInputsFromJSON(context, node_tree, geom_mod,
-                                        js_inputs, be_base_stuff.be_type)
+                                        js_inputs, be_base_stuff.engine_type)
             # geom_mod.show_viewport = True
 
             # Set the GN Object Active and Selected
@@ -112,7 +112,7 @@ def RunNodes(context, js_inputs, node_tree, process_gn_obj, geom_mod, be_base_st
 
             process_gn_obj.data.update()
 
-            js_output_data = BEUtils.GetBlenderOutputs(context, [process_gn_obj], be_base_stuff.be_type, True)
+            js_output_data = BEUtils.GetBlenderOutputs(context, [process_gn_obj], be_base_stuff.engine_type, True)
             return js_output_data
 
         # If SV
@@ -121,7 +121,7 @@ def RunNodes(context, js_inputs, node_tree, process_gn_obj, geom_mod, be_base_st
 
             # Setup inputs
             BEUtils.SetupInputsFromJSON(context, node_tree, None,
-                                        js_inputs, be_base_stuff.be_type)
+                                        js_inputs, be_base_stuff.engine_type)
 
             # Update All Nodes
             # node_tree.update()
@@ -129,7 +129,7 @@ def RunNodes(context, js_inputs, node_tree, process_gn_obj, geom_mod, be_base_st
             node_tree.process_ani(True, False)
 
             js_output_data = BEUtils.GetBlenderOutputs(context, BEUtils.GetSVOutputObjects(node_tree), 
-                                                        be_base_stuff.be_type, False)
+                                                        be_base_stuff.engine_type, False)
             return js_output_data
 
         else:

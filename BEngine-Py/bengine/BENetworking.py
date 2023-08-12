@@ -11,14 +11,12 @@ from .BEStartParams import StartParams
 import json
 import traceback
 
-# MAX_BYTES = 4096
-# host = socket.gethostname() # get name of local machine
-# host = '10.0.0.5'
-# port = 55555
+import pickle
 
 SERVER_SOCKET = None
 client_socket_glob = None
 addr_glob = None
+
 
 def HandleClient():
     global client_socket_glob
@@ -39,8 +37,12 @@ def HandleClient():
                 context = bpy.context
 
                 # Receive
-                js_received_bytes = BENetworkUtils.DoReceive(client_socket, start_params.buffer_size)
-                js_input_data = json.loads(js_received_bytes)
+                js_received_bytes, is_pickle = BENetworkUtils.DoReceive(client_socket, start_params.buffer_size)
+                if is_pickle:
+                    js_input_data = pickle.loads(js_received_bytes)
+                else:
+                    js_input_data = json.loads(js_received_bytes)
+
 
                 be_base_stuff = BEUtils.BaseStuff(js_input_data["BaseValues"])
 
@@ -71,18 +73,22 @@ def HandleClient():
                         print("NodeTree is None. Probably the NodeTree is Wrong.")
 
                     # Send
-                    send_data = str.encode(json.dumps(js_output_data))
-                    BENetworkUtils.DoSend(client_socket, send_data)
+                    if is_pickle:
+                        send_data = pickle.dumps(js_output_data)
+                    else:
+                        send_data = str.encode(json.dumps(js_output_data))
+
+                    BENetworkUtils.DoSend(client_socket, send_data, is_pickle)
 
                 # Update Nodes! Save/Send Blender Inputs
                 elif be_base_stuff.run_type == BESettings.RunNodesType.UpdateNodes:
                     if node_tree:
-                        if be_base_stuff.be_type == BESettings.EngineType.Unreal:
+                        if be_base_stuff.engine_type == BESettings.EngineType.Unreal:
                             inputs_to_send = BERunNodes.MakeInputsJS(node_tree)
                             inputs_to_send = json.dumps(inputs_to_send)
                             inputs_to_send = str.encode(inputs_to_send)
 
-                            BENetworkUtils.DoSend(client_socket, inputs_to_send)
+                            BENetworkUtils.DoSend(client_socket, inputs_to_send, is_pickle)
 
                             print("Inputs are Sent!")
 
