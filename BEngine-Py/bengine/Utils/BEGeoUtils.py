@@ -216,7 +216,9 @@ def MeshToJSONData(mesh):
     # MAIN Attributes
 
     # Get Polygons
-    poly_indices = [tuple(poly.vertices) for poly in mesh.polygons]
+    # poly_indices = [tuple(poly.vertices) for poly in mesh.polygons]
+    poly_indices = [vert for poly in mesh.polygons for vert in poly.vertices]
+
     mesh_dict["PolyIndices"] = poly_indices
 
     # # Get Polygons Loops
