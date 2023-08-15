@@ -44,7 +44,7 @@ def CreateMesh(polys_len, np_verts, np_poly_indices, np_normals):
     mesh.update()
 
     # Normals
-    if np_normals is not None:
+    if np_normals is not None and len(np_normals) > 0:
         mesh.normals_split_custom_set_from_vertices(np_normals)
     # normals2 = [js_mesh["Normals"][loop.vertex_index] for loop in be_sub_mesh.loops]
     # be_sub_mesh.normals_split_custom_set(normals2)
@@ -66,7 +66,6 @@ def MeshFromJSON(js_mesh, engine_type: EngineType):
         np_normals = None
         if "Normals" in js_mesh:
             np_normals = np.asarray(js_mesh["Normals"], dtype=np.float32)
-            # np_normals.shape = len(js_mesh["Normals"]) * 3
             np_normals.shape = (int(len(np_normals) / 3), 3)
 
         # Get UVs
