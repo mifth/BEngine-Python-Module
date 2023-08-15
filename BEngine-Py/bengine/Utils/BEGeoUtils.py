@@ -17,15 +17,15 @@ def CreateEmptyMesh():
 
 
 # Create Mesh
-def CreateMesh(verts_len, polys_len, np_verts, np_poly_indices, np_normals):
+def CreateMesh(polys_len, np_verts, np_poly_indices, np_normals):
     mesh = bpy.data.meshes.new('BESubMesh')
 
-    mesh.vertices.add(verts_len)
+    mesh.vertices.add(int(len(np_verts) / 3))
     mesh.vertices.foreach_set('co', np_verts)
 
     mesh.polygons.add(polys_len)
 
-    mesh.loops.add(polys_len * 3)
+    mesh.loops.add(len(np_poly_indices))
     mesh.loops.foreach_set("vertex_index", np_poly_indices)
 
     np_loop_start = np.arange(0, (polys_len * 3) - 1, 3, dtype=np.int32)
@@ -55,37 +55,33 @@ def CreateMesh(verts_len, polys_len, np_verts, np_poly_indices, np_normals):
 def MeshFromJSON(js_mesh, engine_type: EngineType):
 
     if "Verts" in js_mesh and js_mesh["Verts"]:
-        verts_len = len(js_mesh["Verts"])
+        # np_verts = np.asarray(js_mesh["Verts"], dtype=np.float32)
+        np_verts = js_mesh["Verts"]
 
-        polys_len = len(js_mesh["PolyIndices"])
-        if engine_type == EngineType.Unreal:
-            polys_len = int(polys_len / 3)
+        # np_poly_indices = np.asarray(js_mesh["PolyIndices"], dtype=np.int32)
+        np_poly_indices = js_mesh["PolyIndices"]
 
-        np_verts = np.asarray(js_mesh["Verts"], dtype=np.float32)
-        np_verts.shape = len(np_verts) * 3
-
-        np_poly_indices = np.asarray(js_mesh["PolyIndices"], dtype=np.int32)
-        if engine_type != EngineType.Unreal:
-            np_poly_indices.shape = polys_len * 3
+        polys_len = int(len(js_mesh["PolyIndices"]) / 3)  # Triangles Only
 
         np_normals = None
         if "Normals" in js_mesh:
             np_normals = np.asarray(js_mesh["Normals"], dtype=np.float32)
             # np_normals.shape = len(js_mesh["Normals"]) * 3
+            np_normals.shape = (int(len(np_normals) / 3), 3)
 
         # Get UVs
         uvs_dict = {}
 
         if "UVs" in js_mesh.keys():
             for i, (js_uv_key, js_uv) in enumerate(js_mesh["UVs"].items()):
-                new_uv = [js_uv[idx] for idx in np_poly_indices]
-                new_uv = np.asarray(new_uv, dtype=np.float32)
-                new_uv.shape = len(new_uv) * 2
+                # new_uv = np.asarray(js_uv, dtype=np.float32)
+                # new_uv.shape = (int(len(new_uv) / 2), 2)
+                new_uv = js_uv
 
                 if i > 0:
                     uv_name = "UVMap" + js_uv_key.replace('UV', '')
                 else:
-                    uv_name = ""
+                    uv_name = "UVMap"
 
                 uvs_dict[uv_name] = new_uv
 
@@ -93,12 +89,12 @@ def MeshFromJSON(js_mesh, engine_type: EngineType):
         np_colors = None
 
         if "VertexColors" in js_mesh.keys():
-            np_colors = np.asarray(js_mesh["VertexColors"], dtype=np.float32)
-            np_colors.shape = len(np_colors) * 4
+            # np_colors = np.asarray(js_mesh["VertexColors"], dtype=np.float32)
+            np_colors = js_mesh["VertexColors"]
+            # np_colors.shape = len(np_colors) * 4
 
         # Create Mesh
-        new_mesh = CreateMesh(verts_len, polys_len, 
-                                np_verts, np_poly_indices, np_normals)
+        new_mesh = CreateMesh(polys_len, np_verts, np_poly_indices, np_normals)
 
         # Setup Additional Mesh data
 
@@ -132,10 +128,12 @@ def CurvesFromJSON(js_obj, engine_type: EngineType, import_as_curve: bool):
         for js_curve_elem in js_curve_elems:
 
             # Create Spline
-            verts_len = len(js_curve_elem["Verts"])
+            verts_len = int(len(js_curve_elem["Verts"]) / 3)
 
             np_verts = np.asarray(js_curve_elem["Verts"], dtype=np.float32)
-            np_verts_2 = np.zeros((len(np_verts), 1), dtype=np.float32)
+            np_verts.shape = (verts_len, 3)
+
+            np_verts_2 = np.empty((len(np_verts), 1), dtype=np.float32)
             np_verts = np.append(np_verts, np_verts_2, axis=1)
 
             np_verts.shape = len(np_verts) * 4
@@ -155,9 +153,12 @@ def CurvesFromJSON(js_obj, engine_type: EngineType, import_as_curve: bool):
         vert_counter = 0
         for js_curve_elem in js_curve_elems:
 
-            curv_verts_len = len(js_curve_elem["Verts"])
+            curv_verts_len = int(len(js_curve_elem["Verts"]) / 3)
 
-            for i, vert in enumerate(js_curve_elem["Verts"]):
+            np_verts = np.asarray(js_curve_elem["Verts"], dtype=np.float32)
+            np_verts.shape = (curv_verts_len, 3)
+
+            for i, vert in enumerate(np_verts):
                 # Add Verts
                 verts.append(vert)
 
@@ -180,15 +181,16 @@ def TerrainMeshFromJSON(js_obj, engine_type: EngineType):
     js_terr = js_obj["Terrain"]
 
     if "Verts" in js_terr and js_terr["Verts"]:
-        verts_len = len(js_terr["Verts"])
+        # verts_len = len(js_terr["Verts"])
 
         bm = bmesh.new()
         bmesh.ops.create_grid(bm, x_segments=js_terr["NumberSegmentsX"], y_segments=js_terr["NumberSegmentsY"], calc_uvs=False)
 
-        verts_len = len(js_terr["Verts"])
+        # verts_len = len(js_terr["Verts"])
 
-        np_verts = np.asarray(js_terr["Verts"], dtype=np.float32)
-        np_verts.shape = len(np_verts) * 3
+        # np_verts = np.asarray(js_terr["Verts"], dtype=np.float32)
+        np_verts = js_terr["Verts"]
+
 
         # bm.verts.foreach_set('co', np_verts)
 
@@ -207,9 +209,8 @@ def MeshToJSONData(mesh):
     mesh_dict = {}  # Instances Dictionary
 
     # Get Points
-    np_verts = np.zeros(len(mesh.vertices) * 3, dtype=np.float32)
+    np_verts = np.empty(len(mesh.vertices) * 3, dtype=np.float32)
     mesh.vertices.foreach_get('co', np_verts)
-    np_verts.shape = (len(mesh.vertices), 3)
     mesh_dict["Verts"] = np_verts.tolist()
 
     # GET MESHES
@@ -232,23 +233,30 @@ def MeshToJSONData(mesh):
 
     # # Get Triangles Only
     # mesh.calc_loop_triangles()
-    # np_tris = np.zeros(len(mesh.loop_triangles) * 3, dtype=np.int32)
+    # np_tris = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int32)
     # mesh.loop_triangles.foreach_get('vertices', np_tris)
     # np_tris.shape = (len(mesh.loop_triangles), 3)
     # mesh_dict["PolyIndices"] = np_tris.tolist()
 
     # # Get Loops of Triangles
-    # np_tris_loops = np.zeros(len(mesh.loop_triangles) * 3, dtype=np.int32)
+    # np_tris_loops = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int32)
     # mesh.loop_triangles.foreach_get('loops', np_tris_loops)
     # np_tris_loops.shape = (len(mesh.loop_triangles), 3)
     # mesh_dict["Loops"] = np_tris_loops.tolist()
 
     # Get Normals
     if BESettings.BENGINE_NORMAL in mesh.attributes.keys():
-        if mesh.attributes[BESettings.BENGINE_NORMAL].domain == 'CORNER':
-            np_normals = np.zeros(len(mesh.attributes[BESettings.BENGINE_NORMAL].data) * 3, dtype=np.float32)
-            mesh.attributes[BESettings.BENGINE_NORMAL].data.foreach_get('vector', np_normals)
-            np_normals.shape = (len(mesh.attributes[BESettings.BENGINE_NORMAL].data), 3)
+        normal_attr = mesh.attributes[BESettings.BENGINE_NORMAL]
+
+        if normal_attr.domain == 'CORNER':
+            if data_type == 'VECTOR':
+                np_normals = np.empty(len(normal_attr.data) * 3, dtype=np.float32)
+                normal_attr.data.foreach_get('vector', np_normals)
+                # np_normals.shape = (len(normal_attr.data), 3)
+            else:
+                print("Attribute" + attrib_name + " has "
+                      + data_type + " Type. It's not supported and passed. Standard Normals are used instead!!!")
+                np_normals = GetMeshNormalsNumpy(mesh)
         else:
             print("Attribute " + BESettings.BENGINE_NORMAL + " must have FACECORNER domain. Taken Default Normals Instead!!!")
             np_normals = GetMeshNormalsNumpy(mesh)
@@ -263,51 +271,57 @@ def MeshToJSONData(mesh):
 
     # Get Attributes
     for attrib_name in mesh.attributes.keys():
+
+        parsed_attr = mesh.attributes[attrib_name]
+        data_type = parsed_attr.data_type
+
+        # UVs
         if attrib_name in BESettings.UV_NAMES:
 
-            if mesh.attributes[attrib_name].domain == 'CORNER':
-                if (len(mesh.attributes[attrib_name].data) > 0):
+            if parsed_attr.domain == 'CORNER':
+                
+                if (len(parsed_attr.data) > 0):
+                    if data_type == 'FLOAT_VECTOR':
+                        uv_vec_len = 3
+                    elif data_type == 'FLOAT2':
+                        uv_vec_len = 2
+                    else:
+                        print("Attribute" + parsed_attr.name + " has "
+                              + data_type + " Type. It's not supported and passed!!!")
+                        continue
 
-                    # if mesh.attributes[attrib_name].data_type == 'FLOAT':
-                    #     uv_vec_len = 2
-                    # else:
-                    uv_vec_len = len(mesh.attributes[attrib_name].data[0].vector)
+                    np_uv_attrib = np.empty(len(parsed_attr.data) * uv_vec_len, dtype=np.float32)
 
-                    np_uv_attrib = np.zeros(len(mesh.attributes[attrib_name].data) * uv_vec_len, dtype=np.float32)
-
-                    # if mesh.attributes[attrib_name].data_type == 'FLOAT':
-                    #     mesh.attributes[attrib_name].data.foreach_get('value', np_uv_attrib)
-                    # else:
-                    mesh.attributes[attrib_name].data.foreach_get('vector', np_uv_attrib)
-                    
-                    np_uv_attrib.shape = (len(mesh.attributes[attrib_name].data), uv_vec_len)
-
+                    parsed_attr.data.foreach_get('vector', np_uv_attrib)
                     uvs_dict[attrib_name] = np_uv_attrib.tolist()
 
             else:
-                print("Attribute " + attrib_name + " must have FACECORNER domain!!!")
+                print("Attribute " + attrib_name + " must be FACECORNER domain!!!")
 
+        # Color
         elif attrib_name == BESettings.BENGINE_COLOR:
 
-            if mesh.attributes[attrib_name].domain == 'CORNER':
-                # col_attrib = [tuple(uv_attr.color) for uv_attr in process_obj_ev.data.attributes[attrib_name].data]
-                # mesh_dict["VertexColor"] = col_attrib
+            if parsed_attr.domain == 'CORNER':
 
-                np_col_attrib = np.zeros(len(mesh.attributes[attrib_name].data) * 4, dtype=np.float32)
-                mesh.attributes[attrib_name].data.foreach_get('color', np_col_attrib)
-                np_col_attrib.shape = (len(mesh.attributes[attrib_name].data), 4)
+                if data_type != 'FLOAT_COLOR':
+                    print("Attribute" + attrib_name + " has "
+                            + data_type + " Type. It's not supported and passed!!!")
+                    continue
+
+                np_col_attrib = np.empty(len(parsed_attr.data) * 4, dtype=np.float32)
+                parsed_attr.data.foreach_get('color', np_col_attrib)
                 mesh_dict["VertexColors"] = np_col_attrib.tolist()
             else:
-                print("Attribute " + attrib_name + " must have FACECORNER domain!!!")
+                print("Attribute " + attrib_name + " must be FACECORNER domain!!!")
 
         # Setup bengine_material Value
         elif attrib_name == BESettings.BENGINE_MATERIAL:
-            if mesh.attributes[attrib_name].domain == 'FACE':
-                np_mat_attrib = np.zeros(len(mesh.attributes[attrib_name].data), dtype=np.uint8)
-                mesh.attributes[attrib_name].data.foreach_get('value', np_mat_attrib)
+            if parsed_attr.domain == 'FACE':
+                np_mat_attrib = np.empty(len(parsed_attr.data), dtype=np.uint8)
+                parsed_attr.data.foreach_get('value', np_mat_attrib)
                 mesh_dict["Materials"] = np_mat_attrib.tolist()
             else:
-                print("Attribute " + attrib_name + " must have FACE domain!!!")
+                print("Attribute " + attrib_name + " must be FACE domain!!!")
 
     if uvs_dict:
         mesh_dict["UVs"] = uvs_dict
@@ -320,9 +334,9 @@ def GetMeshNormalsNumpy(mesh):
     mesh.calc_normals_split()
 
     # GET NORMALS
-    np_normals = np.zeros(len(mesh.loops) * 3, dtype=np.float32)
+    np_normals = np.empty(len(mesh.loops) * 3, dtype=np.float32)
     mesh.loops.foreach_get("normal", np_normals)
-    np_normals.shape = (len(mesh.loops), 3)
+    # np_normals.shape = (len(mesh.loops), 3)
 
     return np_normals
 
