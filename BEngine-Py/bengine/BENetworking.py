@@ -85,8 +85,11 @@ def HandleClient():
                     if node_tree:
                         if be_base_stuff.engine_type == BESettings.EngineType.Unreal:
                             inputs_to_send = BERunNodes.MakeInputsJS(node_tree)
-                            inputs_to_send = json.dumps(inputs_to_send)
-                            inputs_to_send = str.encode(inputs_to_send)
+
+                            if is_pickle:
+                                inputs_to_send = pickle.dumps(inputs_to_send)
+                            else:
+                                inputs_to_send = str.encode(json.dumps(inputs_to_send))
 
                             BENetworkUtils.DoSend(client_socket, inputs_to_send, is_pickle)
 
