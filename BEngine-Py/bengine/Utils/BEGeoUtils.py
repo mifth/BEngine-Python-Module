@@ -190,7 +190,6 @@ def TerrainMeshFromJSON(js_obj, engine_type: EngineType):
         # np_verts = np.asarray(js_terr["Verts"], dtype=np.float32)
         np_verts = js_terr["Verts"]
 
-
         # bm.verts.foreach_set('co', np_verts)
 
         new_mesh = bpy.data.meshes.new("BESubMesh")
