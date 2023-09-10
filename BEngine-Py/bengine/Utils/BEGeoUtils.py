@@ -289,8 +289,14 @@ def MeshToJSONData(mesh):
                         continue
 
                     np_uv_attrib = np.empty(len(parsed_attr.data) * uv_vec_len, dtype=np.float32)
-
                     parsed_attr.data.foreach_get('vector', np_uv_attrib)
+
+                    # Remove Third Coordinate
+                    if uv_vec_len == 3 and len(np_uv_attrib) > 2:
+                        # print(np_uv_attrib)
+                        np_uv_attrib = np.delete(np_uv_attrib, np.arange(2, len(np_uv_attrib), 3))
+                        # print(np_uv_attrib)
+
                     uvs_dict[attrib_name] = np_uv_attrib.tolist()
 
             else:
