@@ -526,7 +526,7 @@ def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
                     be_inst_id = mesh.attributes[BESettings.BENGINE_INSTANCE].data[0].value
 
                     if type(be_inst_id) is int:
-                        js_object_data["Bengine_Instance"] = be_inst_id
+                        js_object_data["BE_Instance"] = be_inst_id
                     else:
                         print(BESettings.BENGINE_INSTANCE + " Attribute is not Integer!!!")
 
