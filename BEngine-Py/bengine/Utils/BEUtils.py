@@ -1,3 +1,5 @@
+import os
+import stat
 import bpy
 
 import json
@@ -27,8 +29,14 @@ def LoadJSON(bengineInputs_path: str):
 
 
 def SaveJSON(gn_js_path, js_data):
-    with open(gn_js_path, 'w') as json_file:
 
+    # Set Writable
+    if os.path.exists(gn_js_path) and not os.access(gn_js_path, os.W_OK):
+        os.chmod(gn_js_path, stat.S_IWRITE)
+        print("File Was Read-Only and Has Been Changed: " + gn_js_path)
+
+    # Save JSON
+    with open(gn_js_path, 'w') as json_file:
         json.dump(js_data, json_file)
 
 

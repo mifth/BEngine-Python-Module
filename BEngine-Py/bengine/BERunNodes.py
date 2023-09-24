@@ -83,7 +83,6 @@ def MakeInputsJS(node_tree):
 def SaveBlenderInputs(be_base_stuff: BEUtils.BaseStuff, node_tree):
     js_output_data = MakeInputsJS(node_tree)
 
-    # If No JSON File
     gn_js_path = be_base_stuff.blendfolder + be_base_stuff.blendfile_name + '_' + be_base_stuff.node_sys_name + '.json'
 
     print("JSON Path to Save: " + gn_js_path)
