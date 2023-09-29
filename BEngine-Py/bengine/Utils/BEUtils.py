@@ -502,7 +502,8 @@ def SetTransformFromJSON(js_obj, be_obj, engine_type: EngineType):
 
 
 def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
-                             js_meshes: list, meshes_tmp_list: list, meshes_tmp_set: set):
+                             js_meshes: list, meshes_tmp_list: list, 
+                             meshes_tmp_set: set, engine_type: EngineType):
 
     if is_instance:
         mesh = the_object.object.data
@@ -541,7 +542,7 @@ def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
         # Get Mesh to JSON
         elif "Mesh" not in js_object_data.keys():
             if mesh not in meshes_tmp_set:
-                js_mesh = BEGeoUtils.MeshToJSONData(mesh)
+                js_mesh = BEGeoUtils.MeshToJSONData(mesh, engine_type)
                 js_meshes.append(js_mesh)
 
                 js_object_data["Mesh"] = len(meshes_tmp_list)
@@ -590,13 +591,15 @@ def GetBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_G
             continue
 
         RecordObjectOutputToJSON(objects_sets_dict, obj, False,
-                                 js_meshes_list, meshes_tmp_list, meshes_tmp_set)
+                                 js_meshes_list, meshes_tmp_list,
+                                 meshes_tmp_set, engine_type)
 
     # GET INSTANCES
     for obj_instance in depsgraph.object_instances:
         if obj_instance.parent in process_ev_objs_set and obj_instance.is_instance:
             RecordObjectOutputToJSON(objects_sets_dict, obj_instance, True,
-                                     js_meshes_list, meshes_tmp_list, meshes_tmp_set)
+                                     js_meshes_list, meshes_tmp_list,
+                                     meshes_tmp_set, engine_type)
 
     # Record Objects/Instances
     if objects_sets_dict:

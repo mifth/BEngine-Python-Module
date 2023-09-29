@@ -203,12 +203,13 @@ def TerrainMeshFromJSON(js_obj, engine_type: EngineType):
         return new_mesh
 
 
-def MeshToJSONData(mesh):
+def MeshToJSONData(mesh, engine_type: EngineType):
     mesh_dict = {}  # Instances Dictionary
 
     # Get Points
     np_verts = np.empty(len(mesh.vertices) * 3, dtype=np.float32)
     mesh.vertices.foreach_get('co', np_verts)
+
     mesh_dict["Verts"] = np_verts.tolist()
 
     # GET MESHES
