@@ -11,7 +11,10 @@ from ..BESettings import EngineType
 
 def CreateEmptyMesh():
     empty_mesh_data = bpy.data.meshes.new('BESubMesh')
-    empty_mesh_data.use_auto_smooth = True
+
+    # For Blender 4.0-
+    if bpy.app.version[0] < 4 or (bpy.app.version[0] == 4 and bpy.app.version[1] == 0):
+        empty_mesh_data.use_auto_smooth = True
 
     return empty_mesh_data
 
@@ -38,7 +41,9 @@ def CreateMesh(polys_len, np_verts, np_poly_indices, np_normals):
     np_smooth = np.full(polys_len, 1, dtype=np.int8)
     mesh.polygons.foreach_set("use_smooth", np_smooth)
 
-    mesh.use_auto_smooth = True
+    # For Blender 4.0-
+    if bpy.app.version[0] < 4 or (bpy.app.version[0] == 4 and bpy.app.version[1] == 0):
+        mesh.use_auto_smooth = True
 
     # be_sub_mesh.validate()
     mesh.update()
@@ -335,13 +340,19 @@ def MeshToJSONData(mesh, engine_type: EngineType):
 
 
 def GetMeshNormalsNumpy(mesh):
-    # Calc Split Nomrals
-    mesh.calc_normals_split()
 
     # GET NORMALS
-    np_normals = np.empty(len(mesh.loops) * 3, dtype=np.float32)
-    mesh.loops.foreach_get("normal", np_normals)
-    # np_normals.shape = (len(mesh.loops), 3)
+    if bpy.app.version[0] < 4 or (bpy.app.version[0] == 4 and bpy.app.version[1] == 0):
+        # Calc Split Nomrals
+        mesh.calc_normals_split()
+
+        np_normals = np.empty(len(mesh.loops) * 3, dtype=np.float32)
+        mesh.loops.foreach_get("normal", np_normals)
+    
+    # Blender 4.1+
+    else:
+        np_normals = np.empty(len(mesh.loops) * 3, dtype=np.float32)
+        mesh.corner_normals.foreach_get("vector", np_normals)
 
     return np_normals
 
