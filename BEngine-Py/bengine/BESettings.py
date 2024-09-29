@@ -16,6 +16,8 @@ TYPE_SV_SCRIPT = "SvScriptNodeLite"
 
 OUTPUT_JSON_NAME = "BlenderOutputs.json"
 
+# Out Variables
+KEYPARAM_BE_INSTANCE = "BE_Instance"
 
 class EngineType(Enum):
     Unity = 0
