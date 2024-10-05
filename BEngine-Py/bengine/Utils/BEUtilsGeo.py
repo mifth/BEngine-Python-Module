@@ -8,6 +8,8 @@ import numpy as np
 from .. import BESettings
 from ..BESettings import EngineType
 
+from . import BEUtils
+
 
 def CreateEmptyMesh():
     empty_mesh_data = bpy.data.meshes.new('BESubMesh')
@@ -273,6 +275,11 @@ def MeshToJSONData(mesh, engine_type: EngineType):
     uvs_dict = {}
     np_col_attrib = None
 
+    # Custom Attributes
+    float_custom_attribs = {}
+    vector_custom_attribs = {}
+    color_custom_attribs = {}
+
     # Get Attributes
     for attrib_name in mesh.attributes.keys():
 
@@ -333,9 +340,28 @@ def MeshToJSONData(mesh, engine_type: EngineType):
             else:
                 print("Attribute " + attrib_name + " must be FACE domain!!!")
 
+        # Custom Mesh Attribute
+        elif attrib_name.startswith("bem_"):
+            BEUtils.GetCustomAttrib(parsed_attr.data[0], float_custom_attribs, vector_custom_attribs, color_custom_attribs, attrib_name)
+
     if uvs_dict:
         mesh_dict["UVs"] = uvs_dict
     
+    # Add Custom Attributes
+    if float_custom_attribs or vector_custom_attribs or color_custom_attribs:
+        attribs = {}
+
+        if float_custom_attribs:
+            attribs[BESettings.CUSTOM_FLOAT_ATTRIBS] = float_custom_attribs
+
+        if vector_custom_attribs:
+            attribs[BESettings.CUSTOM_VECTOR_ATTRIBS] = vector_custom_attribs
+
+        if color_custom_attribs:
+            attribs[BESettings.CUSTOM_COLOR_ATTRIBS] = color_custom_attribs
+
+        mesh_dict[BESettings.CUSTOM_ATTRIBUTES] = attribs
+
     return mesh_dict
 
 

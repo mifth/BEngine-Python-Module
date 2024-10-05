@@ -19,6 +19,11 @@ OUTPUT_JSON_NAME = "BlenderOutputs.json"
 # Out Variables
 KEYPARAM_BE_INSTANCE = "BE_Instance"
 
+CUSTOM_ATTRIBUTES = "CustomAttributes"
+CUSTOM_FLOAT_ATTRIBS = "CustomFloatAttributes"
+CUSTOM_VECTOR_ATTRIBS = "CustomVectorAttributes"
+CUSTOM_COLOR_ATTRIBS = "CustomColorAttributes"
+
 class EngineType(Enum):
     Unity = 0
     Unreal = 1

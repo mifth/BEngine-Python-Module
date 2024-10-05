@@ -1,7 +1,5 @@
 import bpy
 
-# from unicodedata import decimal
-
 # try:
 #     from .Utils import BEUtils
 # except:
@@ -10,8 +8,6 @@ import bpy
 #     #PACKAGE_PARENT = pathlib.Path.cwd().parent # if on jupyter notebook
 #     SCRIPT_DIR = PACKAGE_PARENT
 #     sys.path.append(str(SCRIPT_DIR) + "/Utils")
-
-#     import BEUtils
 
 from .Utils import BEUtils
 from . import BESettings

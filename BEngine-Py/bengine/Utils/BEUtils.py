@@ -539,6 +539,12 @@ def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
     inst_pos, inst_rot, inst_scale = the_object.matrix_world.decompose()
     js_object_data["Transforms"].append((tuple(inst_pos), tuple(inst_rot.to_euler('XYZ')), tuple(inst_scale)))
 
+    # Get Custom Attributes
+    custom_attribs_dict = GetCustomAttribs("bei_", mesh.attributes)
+    if custom_attribs_dict:
+        js_object_data[BESettings.CUSTOM_ATTRIBUTES] = custom_attribs_dict
+
+
     # Get Mesh or BENGINE_INSTANCE
     if obj_type == "MESH":
         # Get BENGINE_INSTANCE Value
@@ -549,7 +555,7 @@ def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
                     be_inst_id = mesh.attributes[BESettings.BENGINE_INSTANCE].data[0].value
 
                     if type(be_inst_id) is int:
-                        js_object_data[BESettings.KEYPARAM_BE_INSTANCE] = be_inst_id
+                        js_object_data[BESettings.OUT_BE_INSTANCE] = be_inst_id
                     else:
                         print(BESettings.BENGINE_INSTANCE + " Attribute is not Integer!!!")
 
@@ -566,6 +572,51 @@ def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
 
             else:
                 js_object_data["Mesh"] = meshes_tmp_list.index(mesh)
+
+
+# Get Custom Instance Attributes
+def GetCustomAttribs(custom_attrib_name: str, attributes):
+    custom_attribs_dict = {}
+
+    float_custom_attribs = {}
+    vector_custom_attribs = {}
+    color_custom_attribs = {}
+
+    for attrib_name in attributes.keys():
+        if attrib_name.startswith(custom_attrib_name):
+            attrib = attributes[attrib_name].data[0]
+
+            GetCustomAttrib(attrib, float_custom_attribs, vector_custom_attribs, color_custom_attribs, attrib_name)
+
+    # Add Custom Attributes
+    if float_custom_attribs or vector_custom_attribs or color_custom_attribs:
+        if float_custom_attribs:
+            custom_attribs_dict[BESettings.CUSTOM_FLOAT_ATTRIBS] = float_custom_attribs
+
+        if vector_custom_attribs:
+            custom_attribs_dict[BESettings.CUSTOM_VECTOR_ATTRIBS] = vector_custom_attribs
+
+        if color_custom_attribs:
+            custom_attribs_dict[BESettings.CUSTOM_COLOR_ATTRIBS] = color_custom_attribs
+
+    return custom_attribs_dict
+
+
+def GetCustomAttrib(attrib, float_attribs: dict, vector_attribs: dict, color_attribs: dict, attrib_name: str):
+    attrib_type = type(attrib)
+    attrib_val = None
+
+    if (attrib_type is bpy.types.FloatVectorAttributeValue):
+        attrib_val = attrib.vector
+        vector_attribs[attrib_name] = tuple(attrib_val)
+
+    elif (attrib_type is bpy.types.FloatColorAttributeValue or attrib_type is bpy.types.ByteColorAttributeValue):
+        attrib_val = attrib.color
+        color_attribs[attrib_name] = tuple(attrib_val)
+    
+    else:
+        attrib_val = attrib.value
+        float_attribs[attrib_name] = attrib_val
 
 
 def GetBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_GN: bool):
