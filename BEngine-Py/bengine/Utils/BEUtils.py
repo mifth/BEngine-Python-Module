@@ -555,7 +555,7 @@ def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
                     be_inst_id = mesh.attributes[BESettings.BENGINE_INSTANCE].data[0].value
 
                     if type(be_inst_id) is int:
-                        js_object_data[BESettings.OUT_BE_INSTANCE] = be_inst_id
+                        js_object_data[BESettings.KEYPARAM_BE_INSTANCE] = be_inst_id
                     else:
                         print(BESettings.BENGINE_INSTANCE + " Attribute is not Integer!!!")
 
@@ -606,7 +606,7 @@ def GetCustomAttrib(attrib, float_attribs: dict, vector_attribs: dict, color_att
     attrib_type = type(attrib)
     attrib_val = None
 
-    if (attrib_type is bpy.types.FloatVectorAttributeValue):
+    if (attrib_type is bpy.types.FloatVectorAttributeValue or attrib_type is bpy.types.FloatVectorAttributeValue):
         attrib_val = attrib.vector
         vector_attribs[attrib_name] = tuple(attrib_val)
 
@@ -614,9 +614,10 @@ def GetCustomAttrib(attrib, float_attribs: dict, vector_attribs: dict, color_att
         attrib_val = attrib.color
         color_attribs[attrib_name] = tuple(attrib_val)
     
-    else:
+    elif (attrib_type is bpy.types.BoolAttributeValue or attrib_type is bpy.types.IntAttributeValue
+          or attrib_type is bpy.types.FloatAttributeValue):
         attrib_val = attrib.value
-        float_attribs[attrib_name] = attrib_val
+        float_attribs[attrib_name] = float(attrib_val)
 
 
 def GetBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_GN: bool):
@@ -633,21 +634,6 @@ def GetBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_G
 
     process_ev_objs = [depsgraph.objects[obj.name] for obj in process_objs]
     process_ev_objs_set = set(process_ev_objs)
-
-    # # GET MAIN MESH
-    # if is_GN:
-    #     # GET MAIN MESH (FOR GN ONLY)!!!
-    #     main_mesh_dict = BEUtilsGeo.MeshToJSONData(process_objs[0])
-
-    #     # If the main mesh has Verts/Polygons
-    #     # Only one mesh at the moment
-    #     if len(main_mesh_dict["Verts"]) > 0:
-    #         # meshes.insert(0, main_mesh_dict)
-    #         meshes.append(main_mesh_dict)  # Add mesh to a list
-
-    #     if meshes:
-    #         js_output_data["Meshes"] = meshes
-    # else:
 
     # GET OBJECS AND MESHES
     for obj in process_ev_objs:
@@ -674,9 +660,6 @@ def GetBlenderOutputs(context, process_objs: list, engine_type: EngineType, is_G
 
     # Record Meshes
     js_output_data["Meshes"] = js_meshes_list
-
-    # gn_js_path = be_paths.be_tmp_folder + BESettings.OUTPUT_JSON_NAME
-    # SaveJSON(gn_js_path, js_output_data)
 
     return js_output_data
 
