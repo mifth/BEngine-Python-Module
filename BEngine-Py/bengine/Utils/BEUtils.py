@@ -606,14 +606,21 @@ def GetCustomAttrib(attrib, float_attribs: dict, vector_attribs: dict, color_att
     attrib_type = type(attrib)
     attrib_val = None
 
-    if (attrib_type is bpy.types.FloatVectorAttributeValue):
+    # Vector
+    if (attrib_type is bpy.types.FloatVectorAttributeValue or attrib_type is bpy.types.Float2AttributeValue):
         attrib_val = attrib.vector
-        vector_attribs[attrib_name] = tuple(attrib_val)
 
+        if (attrib_type is bpy.types.FloatVectorAttributeValue):
+            vector_attribs[attrib_name] = tuple(attrib_val)
+        else:
+            vector_attribs[attrib_name] = (attrib_val[0], attrib_val[1], 0)
+
+    # Color
     elif (attrib_type is bpy.types.FloatColorAttributeValue or attrib_type is bpy.types.ByteColorAttributeValue):
         attrib_val = attrib.color
         color_attribs[attrib_name] = tuple(attrib_val)
     
+    # Float
     elif (attrib_type is bpy.types.BoolAttributeValue or attrib_type is bpy.types.IntAttributeValue
           or attrib_type is bpy.types.FloatAttributeValue):
         attrib_val = attrib.value
