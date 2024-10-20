@@ -540,7 +540,7 @@ def RecordObjectOutputToJSON(objects_sets_dict, the_object, is_instance: bool,
     js_object_data["Transforms"].append((tuple(inst_pos), tuple(inst_rot.to_euler('XYZ')), tuple(inst_scale)))
 
     # Get Custom Attributes
-    custom_attribs_dict = GetCustomAttribs("bei_", mesh.attributes)
+    custom_attribs_dict = GetCustomAttribs("beo_", mesh.attributes)
     if custom_attribs_dict:
         js_object_data[BESettings.CUSTOM_ATTRIBUTES] = custom_attribs_dict
 
