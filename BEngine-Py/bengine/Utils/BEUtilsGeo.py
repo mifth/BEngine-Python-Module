@@ -148,6 +148,11 @@ def CurvesFromJSON(js_obj, engine_type: EngineType, import_as_curve: bool):
             polyline.points.add(verts_len - len(polyline.points))  # Here we Substract 1 Point
             polyline.points.foreach_set('co', np_verts)
 
+            # Add Tilt
+            if "Tilt" in js_curve_elem.keys():
+                np_tilt = np.asarray(js_curve_elem["Tilt"], dtype=np.float32)
+                polyline.points.foreach_set('tilt', np_tilt)
+
             # Set Open/Closed
             polyline.use_cyclic_u = js_curve_elem["IsClosed"]
 
