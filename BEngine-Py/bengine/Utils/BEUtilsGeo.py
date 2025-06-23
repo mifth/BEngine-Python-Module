@@ -258,14 +258,15 @@ def MeshToJSONData(mesh, engine_type: EngineType):
     # Get Normals
     if BESettings.BENGINE_NORMAL in mesh.attributes.keys():
         normal_attr = mesh.attributes[BESettings.BENGINE_NORMAL]
+        data_type = normal_attr.data_type
 
         if normal_attr.domain == 'CORNER':
-            if data_type == 'VECTOR':
+            if data_type == 'FLOAT_VECTOR':
                 np_normals = np.empty(len(normal_attr.data) * 3, dtype=np.float32)
                 normal_attr.data.foreach_get('vector', np_normals)
                 # np_normals.shape = (len(normal_attr.data), 3)
             else:
-                print("Attribute" + attrib_name + " has "
+                print("Attribute" + BESettings.BENGINE_NORMAL + " has "
                       + data_type + " Type. It's not supported and passed. Standard Normals are used instead!!!")
                 np_normals = GetMeshNormalsNumpy(mesh)
         else:
